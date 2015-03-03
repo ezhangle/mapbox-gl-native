@@ -1,5 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
+#import <GLKit/GLKit.h>
+#import <OpenGLES/EAGL.h>
 
 @protocol MGLMapViewDelegate;
 
@@ -195,6 +197,8 @@
 
 /** Resets the map to the minimum zoom level, a center coordinate of (0, 0), and a northern heading. */
 - (void)resetPosition;
+
+@property (nonatomic) GLKView *glView;
 
 @end
 

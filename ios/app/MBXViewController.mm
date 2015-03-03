@@ -93,7 +93,7 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     settings = new mbgl::Settings_NSUserDefaults();
     [self restoreState:nil];
 
-    [self.mapView setCenterCoordinate:CLLocationCoordinate2DMake(37.76176, -122.42153) zoomLevel:13.5 animated:NO];
+    [self.mapView setCenterCoordinate:CLLocationCoordinate2DMake(37.776, -122.412) zoomLevel:14.5 animated:NO];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -102,48 +102,52 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
     self.features = [NSMutableArray array];
 
-//    id geojson = [NSJSONSerialization JSONObjectWithData:
-//                     [NSData dataWithContentsOfFile:
-//                        [[NSBundle mainBundle] pathForResource:@"features" ofType:@"json"]]
-//                                            options:NSJSONReadingMutableContainers
-//                                              error:nil];
+    id geojson = [NSJSONSerialization JSONObjectWithData:
+                     [NSData dataWithContentsOfFile:
+                        [[NSBundle mainBundle] pathForResource:@"features" ofType:@"json"]]
+                                            options:NSJSONReadingMutableContainers
+                                              error:nil];
 
-//    if (geojson && [geojson isKindOfClass:[NSDictionary class]]) {
-//        self.pin = [UIImage imageNamed:@"pin.png"];
-//        for (NSMutableDictionary *feature in geojson[@"features"]) {
-//            CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
-//                                                                  [feature[@"geometry"][@"coordinates"][0] doubleValue]);
-//            CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
-//            UIImageView *pinView = [[UIImageView alloc] initWithImage:self.pin];
-//            pinView.center = p;
+    if (geojson && [geojson isKindOfClass:[NSDictionary class]]) {
+        self.pin = [UIImage imageNamed:@"pin.png"];
+        for (NSMutableDictionary *feature in geojson[@"features"]) {
+            CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
+                                                                  [feature[@"geometry"][@"coordinates"][0] doubleValue]);
+            CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
+            UIImageView *pinView = [[UIImageView alloc] initWithImage:self.pin];
+            pinView.center = p;
 //            [self.view addSubview:pinView];
-//
-//            feature[@"view"] = pinView;
-//
-//            [self.features addObject:feature];
-//        }
-//    }
+            [self.mapView.glView addSubview:pinView];
 
-    NSArray *locs = [self.mapView getSampleLoctions];
-    self.pin = [UIImage imageNamed:@"pin.png"];
-    NSLog(@"locs = %@", locs);
+            feature[@"view"] = pinView;
 
-    for (int lc = 0; lc < (int)[locs count]; lc++) {
-        NSString *loc = [locs objectAtIndex:lc];
-        NSArray *coords = [loc componentsSeparatedByString:@","];
-        CLLocationCoordinate2D c = CLLocationCoordinate2DMake([[coords objectAtIndex:0] doubleValue], [[coords objectAtIndex:1] doubleValue]);
-        UIImageView *pinView = [[UIImageView alloc] initWithImage:self.pin];
-        CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
-        pinView.center = p;
-        [self.view addSubview:pinView];
-        [self.features addObject:pinView];
+            [self.features addObject:feature];
+        }
     }
-    
-    self.lastCenter = self.mapView.centerCoordinate;
-    self.lastZoom = self.mapView.zoomLevel;
 
-    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(refresh:)];
-    [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+//    NSArray *locs = [self.mapView getSampleLoctions];
+//    self.pin = [UIImage imageNamed:@"pin.png"];
+//    NSLog(@"locs = %@", locs);
+//
+//    for (int lc = 0; lc < (int)[locs count]; lc++) {
+//        NSString *loc = [locs objectAtIndex:lc];
+//        NSArray *coords = [loc componentsSeparatedByString:@","];
+//        CLLocationCoordinate2D c = CLLocationCoordinate2DMake([[coords objectAtIndex:0] doubleValue], [[coords objectAtIndex:1] doubleValue]);
+//        UIImageView *pinView = [[UIImageView alloc] initWithImage:self.pin];
+//        CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
+//        pinView.center = p;
+//        self.mapView.
+    
+//        [self.mapView.glView addSubview:pinView];
+//        [self.view addSubview:pinView];
+//        [self.features addObject:pinView];
+//    }
+    
+//    self.lastCenter = self.mapView.centerCoordinate;
+//    self.lastZoom = self.mapView.zoomLevel;
+
+//    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(refresh:)];
+//    [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
 
 #pragma clang diagnostic push
@@ -151,19 +155,19 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
 - (void)refresh:(CADisplayLink *)link
 {
-        if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
-            self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
-            self.mapView.zoomLevel != self.lastZoom) {
-            NSArray *locsCoords = [self.mapView getSampleLoctionsScreenCoordinatesConvertedFromView:self.mapView];
-            for (int lc = 0; lc < (int)[locsCoords count]; lc++) {
-                NSValue *loc = [locsCoords objectAtIndex:lc];
-                CGPoint p = [loc CGPointValue];
-                if (CGRectContainsPoint(self.mapView.bounds, p)) {
-                    UIImageView *pin = (UIImageView *)[self.features objectAtIndex:lc];
-                    pin.center = p;
-                }
-            }
-        }
+//        if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
+//            self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
+//            self.mapView.zoomLevel != self.lastZoom) {
+//            NSArray *locsCoords = [self.mapView getSampleLoctionsScreenCoordinatesConvertedFromView:self.mapView];
+//            for (int lc = 0; lc < (int)[locsCoords count]; lc++) {
+//                NSValue *loc = [locsCoords objectAtIndex:lc];
+//                CGPoint p = [loc CGPointValue];
+//                if (CGRectContainsPoint(self.mapView.bounds, p)) {
+//                    UIImageView *pin = (UIImageView *)[self.features objectAtIndex:lc];
+//                    pin.center = p;
+//                }
+//            }
+//        }
     
 //    if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
 //        self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
