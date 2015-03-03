@@ -143,11 +143,11 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 //        [self.features addObject:pinView];
 //    }
     
-//    self.lastCenter = self.mapView.centerCoordinate;
-//    self.lastZoom = self.mapView.zoomLevel;
+    self.lastCenter = self.mapView.centerCoordinate;
+    self.lastZoom = self.mapView.zoomLevel;
 
-//    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(refresh:)];
-//    [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:self selector:@selector(refresh:)];
+    [link addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
 
 #pragma clang diagnostic push
@@ -165,25 +165,26 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 //                if (CGRectContainsPoint(self.mapView.bounds, p)) {
 //                    UIImageView *pin = (UIImageView *)[self.features objectAtIndex:lc];
 //                    pin.center = p;
+//                    NSLog(@"New Point: %@", NSStringFromCGPoint(p));
 //                }
 //            }
 //        }
     
-//    if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
-//        self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
-//        self.mapView.zoomLevel != self.lastZoom) {
-//        for (NSDictionary *feature in self.features) {
-//            CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
-//                                                                  [feature[@"geometry"][@"coordinates"][0] doubleValue]);
-//            CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
-//            if (CGRectContainsPoint(self.mapView.bounds, p)) {
-//                ((UIView *)feature[@"view"]).center = p;
-//            }
-//        }
-//
-//        self.lastCenter = self.mapView.centerCoordinate;
-//        self.lastZoom = self.mapView.zoomLevel;
-//    }
+    if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
+        self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
+        self.mapView.zoomLevel != self.lastZoom) {
+        for (NSDictionary *feature in self.features) {
+            CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
+                                                                  [feature[@"geometry"][@"coordinates"][0] doubleValue]);
+            CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
+            if (CGRectContainsPoint(self.mapView.bounds, p)) {
+                ((UIView *)feature[@"view"]).center = p;
+            }
+        }
+
+        self.lastCenter = self.mapView.centerCoordinate;
+        self.lastZoom = self.mapView.zoomLevel;
+    }
 //    NSArray *locsCoords = [self.mapView getSampleLoctionsScreenCoordinatesConvertedFromView:self.mapView];
 //    NSArray *locs = [self.mapView getSampleLoctions];
 //    NSMutableString *str = [[NSMutableString alloc] init];
