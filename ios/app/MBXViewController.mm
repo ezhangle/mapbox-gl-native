@@ -177,8 +177,12 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
             CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
                                                                   [feature[@"geometry"][@"coordinates"][0] doubleValue]);
             CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
+            UIView *pin = (UIView *)feature[@"view"];
             if (CGRectContainsPoint(self.mapView.bounds, p)) {
-                ((UIView *)feature[@"view"]).center = p;
+                pin.center = p;
+                [pin setHidden:NO];
+            } else {
+                [pin setHidden:YES];
             }
         }
 
