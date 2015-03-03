@@ -99,7 +99,7 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
 - (void)viewDidAppear:(BOOL)animated
 {
-    [super viewWillAppear:animated];
+    [super viewDidAppear:animated];
 
     self.features = [NSMutableArray array];
 
