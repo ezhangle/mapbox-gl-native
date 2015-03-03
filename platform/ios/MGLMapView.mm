@@ -157,7 +157,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 {
     if ( ! styleJSON)
     {
-        [self useBundledStyleNamed:@"bright-v6"];
+        [self useBundledStyleNamed:@"bright-v7"];
     }
     else
     {
@@ -645,7 +645,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
         // constrain to +/-30 degrees when merely rotating like Apple does
         //
-        if ( ! self.isRotationAllowed && fabsf(self.pinch.scale) < 10)
+        if ( ! self.isRotationAllowed && std::abs(self.pinch.scale) < 10)
         {
             newDegrees = fminf(newDegrees,  30);
             newDegrees = fmaxf(newDegrees, -30);

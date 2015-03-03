@@ -43,7 +43,7 @@ void Source::load(Map& map, FileSource& fileSource) {
     const std::string url = util::mapbox::normalizeSourceURL(info.url, map.getAccessToken());
     fileSource.request({ Resource::Kind::JSON, url }, **map.loop, [source, &map](const Response &res) {
         if (res.status != Response::Successful) {
-            Log::Warning(Event::General, "failed to load source TileJSON");
+            Log::Warning(Event::General, "Failed to load source TileJSON: %s", res.message.c_str());
             return;
         }
 
@@ -51,7 +51,7 @@ void Source::load(Map& map, FileSource& fileSource) {
         d.Parse<0>(res.data.c_str());
 
         if (d.HasParseError()) {
-            Log::Warning(Event::General, "invalid source TileJSON");
+            Log::Warning(Event::General, "Invalid source TileJSON; Parse Error at %d: %s", d.GetErrorOffset(), d.GetParseError());
             return;
         }
 
@@ -190,7 +190,7 @@ TileData::State Source::addTile(Map& map, uv::worker& worker,
             new_tile.data = std::make_shared<VectorTileData>(normalized_id, map.getMaxZoom(), style,
                                                              glyphAtlas, glyphStore,
                                                              spriteAtlas, sprite,
-                                                             texturePool, info, fileSource);
+                                                             info, fileSource);
         } else if (info.type == SourceType::Raster) {
             new_tile.data = std::make_shared<RasterTileData>(normalized_id, texturePool, info, fileSource);
         } else {
@@ -206,7 +206,6 @@ TileData::State Source::addTile(Map& map, uv::worker& worker,
 
 double Source::getZoom(const TransformState& state) const {
     double offset = std::log(util::tileSize / info.tile_size) / std::log(2);
-    offset += (state.getPixelRatio() > 1.0 ? 1 :0);
     return state.getZoom() + offset;
 }
 
