@@ -136,8 +136,8 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
         CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
         pinView.center = p;
         [self.view addSubview:pinView];
+        [self.features addObject:pinView];
     }
-    
     
     self.lastCenter = self.mapView.centerCoordinate;
     self.lastZoom = self.mapView.zoomLevel;
@@ -151,6 +151,20 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
 - (void)refresh:(CADisplayLink *)link
 {
+        if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
+            self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
+            self.mapView.zoomLevel != self.lastZoom) {
+            NSArray *locsCoords = [self.mapView getSampleLoctionsScreenCoordinatesConvertedFromView:self.mapView];
+            for (int lc = 0; lc < (int)[locsCoords count]; lc++) {
+                NSValue *loc = [locsCoords objectAtIndex:lc];
+                CGPoint p = [loc CGPointValue];
+                if (CGRectContainsPoint(self.mapView.bounds, p)) {
+                    UIImageView *pin = (UIImageView *)[self.features objectAtIndex:lc];
+                    pin.center = p;
+                }
+            }
+        }
+    
 //    if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
 //        self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
 //        self.mapView.zoomLevel != self.lastZoom) {
@@ -166,13 +180,13 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 //        self.lastCenter = self.mapView.centerCoordinate;
 //        self.lastZoom = self.mapView.zoomLevel;
 //    }
-    NSArray *locsCoords = [self.mapView getSampleLoctionsScreenCoordinatesConvertedFromView:self.mapView];
-    NSArray *locs = [self.mapView getSampleLoctions];
-    NSMutableString *str = [[NSMutableString alloc] init];
-    for (unsigned long lc = 0; lc < [locs count]; lc++) {
-        [str appendString:[NSString stringWithFormat:@"(latlng = %@, xy = %@)", [locs objectAtIndex:lc], [locsCoords objectAtIndex:lc]]];
-    }
-    NSLog(@"refresh for number of locs = %lu: %@", [locs count], str);
+//    NSArray *locsCoords = [self.mapView getSampleLoctionsScreenCoordinatesConvertedFromView:self.mapView];
+//    NSArray *locs = [self.mapView getSampleLoctions];
+//    NSMutableString *str = [[NSMutableString alloc] init];
+//    for (unsigned long lc = 0; lc < [locs count]; lc++) {
+//        [str appendString:[NSString stringWithFormat:@"(latlng = %@, xy = %@)", [locs objectAtIndex:lc], [locsCoords objectAtIndex:lc]]];
+//    }
+//    NSLog(@"refresh for number of locs = %lu: %@", [locs count], str);
 }
 
 - (void)saveState:(NSNotification *)notification
