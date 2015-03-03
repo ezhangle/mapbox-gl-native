@@ -252,16 +252,6 @@ bool TransformState::isChanging() const {
     return rotating || scaling || panning;
 }
 
-#pragma mark - Sample Locations
-
-std::array<LatLng, 4> TransformState::getSampleLocations() const {
-    return sampleLocations;
-}
-
-std::array<mbgl::vec2<double>, 4> TransformState::getSampleLocationsScreenCoordinates() const {
-    return sampleLocationsScreenCooridnates;
-}
-
 #pragma mark - (private helper functions)
 
 

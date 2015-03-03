@@ -55,11 +55,7 @@ public:
 
     // Changing
     bool isChanging() const;
-    
-    // Sample Location Data
-    std::array<LatLng, 4> getSampleLocations() const;
-    std::array<mbgl::vec2<double>, 4> getSampleLocationsScreenCoordinates() const;
-    
+
 private:
     double pixel_x() const;
     double pixel_y() const;

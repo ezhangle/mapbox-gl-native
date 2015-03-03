@@ -133,10 +133,6 @@
 /** Resets the map rotation to a northern heading. */
 - (void)resetNorth;
 
-# pragma mark - Sample Locations
-- (NSArray *) getSampleLoctions;
-- (NSArray *) getSampleLoctionsScreenCoordinatesConvertedFromView:(UIView *)view;
-
 #pragma mark - Converting Map Coordinates
 
 /** @name Converting Map Coordinates */

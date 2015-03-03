@@ -115,11 +115,7 @@ public:
     void stopScaling();
     double getMinZoom() const;
     double getMaxZoom() const;
-    
-    // Sample Locations
-    std::array<LatLng, 4> getSampleLocations() const;
-    std::array<mbgl::vec2<double>, 4> getSampleLocationsScreenCoordinates() const;
-    
+
     // Rotation
     void rotateBy(double sx, double sy, double ex, double ey, std::chrono::steady_clock::duration duration = std::chrono::steady_clock::duration::zero());
     void setBearing(double degrees, std::chrono::steady_clock::duration duration = std::chrono::steady_clock::duration::zero());

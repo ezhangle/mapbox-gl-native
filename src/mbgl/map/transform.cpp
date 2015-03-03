@@ -56,9 +56,6 @@ void Transform::_moveBy(const double dx, const double dy, const std::chrono::ste
     view.notifyMapChange(duration != std::chrono::steady_clock::duration::zero() ?
                            MapChangeRegionWillChangeAnimated :
                            MapChangeRegionWillChange);
-
-
-    updateSampleLocationScreenCoordinates();
     
     final.x = current.x + std::cos(current.angle) * dx + std::sin(current.angle) * dy;
     final.y = current.y + std::cos(current.angle) * dy + std::sin(-current.angle) * dx;
@@ -210,14 +207,6 @@ double Transform::getMaxZoom() const {
     return std::log2(max_scale);
 }
 
-std::array<LatLng, 4> Transform::getSampleLocations() const {
-    return current.getSampleLocations();
-}
-
-std::array<mbgl::vec2<double>, 4> Transform::getSampleLocationsScreenCoordinates() const {
-    return current.getSampleLocationsScreenCoordinates();
-}
-
 void Transform::_clearScaling() {
     // This is only called internally, so we don't need a lock here.
 
@@ -298,17 +287,6 @@ void Transform::_setScaleXY(const double new_scale, const double xn, const doubl
                            MapChangeRegionDidChangeAnimated :
                            MapChangeRegionDidChange,
                            duration);
-}
-
-#pragma mark - Sample Location Screen Coordinates
-void Transform::updateSampleLocationScreenCoordinates() {
-
-    std::array<LatLng, 4> locs = current.getSampleLocations();
-
-    for (unsigned long lc = 0; lc < locs.size(); lc++) {
-        mbgl::vec2<double> pixel = current.pixelForLatLng(locs[lc]);
-        current.sampleLocationsScreenCooridnates[lc] = pixel;
-    }
 }
 
 #pragma mark - Constraints
