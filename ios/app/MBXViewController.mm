@@ -1,5 +1,4 @@
 #import "MBXViewController.h"
-#import "SMCalloutView.h"
 
 #import <mbgl/ios/MGLMapView.h>
 
@@ -23,7 +22,6 @@ static NSString *const kStyleVersion = @"v7";
 @interface MBXViewController () <UIActionSheetDelegate, CLLocationManagerDelegate>
 
 @property (nonatomic) MGLMapView *mapView;
-@property (nonatomic) SMCalloutView *calloutView;
 @property (nonatomic) UITapGestureRecognizer *tapRecognizer;
 @property (nonatomic) CLLocationManager *locationManager;
 @property (nonatomic) NSMutableArray *features;
@@ -81,8 +79,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     self.navigationController.navigationBar.tintColor = kTintColor;
     self.mapView.tintColor = kTintColor;
     
-    self.calloutView = [SMCalloutView platformCalloutView];
-    [self.mapView addSubview:self.calloutView];
     self.tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(showPopupForTapRecognizer:)];
     self.tapRecognizer.numberOfTapsRequired = 1;
 
@@ -127,12 +123,12 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
             CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
                                                                   [feature[@"geometry"][@"coordinates"][0] doubleValue]);
             CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
-            MBXAnnotation *ann = [[MBXAnnotation alloc] initWithImage:self.pin];
-            ann.coordinate = c;
-            ann.center = p;
-            [ann addGestureRecognizer:self.tapRecognizer];
-            [self.mapView.glView addSubview:ann];
-            [self.features addObject:ann];
+            MBXAnnotationView *annotationView = [[MBXAnnotationView alloc] initWithImage:self.pin];
+            annotationView.annotation = [MBXAnnotation annotationWithLocation:c];
+            annotationView.center = p;
+            [annotationView addGestureRecognizer:self.tapRecognizer];
+            [self.mapView.glView addSubview:annotationView];
+            [self.features addObject:annotationView];
         }
     }
     
@@ -156,13 +152,13 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
         self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
         self.mapView.zoomLevel != self.lastZoom) {
-        for (MBXAnnotation *ann in self.features) {
-            CGPoint p = [self.mapView convertCoordinate:ann.coordinate toPointToView:self.mapView];
+        for (MBXAnnotationView *annotationView in self.features) {
+            CGPoint p = [self.mapView convertCoordinate:annotationView.annotation.coordinate toPointToView:self.mapView];
             if (CGRectContainsPoint(self.mapView.bounds, p)) {
-                ann.center = p;
-                [ann setHidden:NO];
+                annotationView.center = p;
+                [annotationView setHidden:NO];
             } else {
-                [ann setHidden:YES];
+                [annotationView setHidden:YES];
             }
         }
 
@@ -202,12 +198,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 }
 
 #pragma mark - Actions
-
-- (void)showPopupForTapRecognizer:(UITapGestureRecognizer *)tapRecognizer {
-    self.calloutView.title = @"Hey";
-    self.calloutView.subtitle = @"There!";
-    [self.calloutView presentCalloutFromRect:tapRecognizer.view.bounds inView:tapRecognizer.view constrainedToView:self.mapView animated:YES];
-}
 
 - (void)showSettings
 {

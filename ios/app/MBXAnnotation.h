@@ -9,8 +9,17 @@
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
 
-@interface MBXAnnotation : UIImageView
+#import <mbgl/ios/MGLAnnotation.h>
+#import <mbgl/ios/MGLAnnotationView.h>
 
-@property (assign) CLLocationCoordinate2D coordinate;
+@interface MBXAnnotation : NSObject <MGLAnnotation>
+
++ (instancetype)annotationWithLocation:(CLLocationCoordinate2D)coordinate;
+
+- (instancetype)initWithLocation:(CLLocationCoordinate2D)coordinate;
+
+@end
+
+@interface MBXAnnotationView : MGLAnnotationView
 
 @end

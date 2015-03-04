@@ -8,46 +8,42 @@
 
 #import "MBXAnnotation.h"
 
-@implementation MBXAnnotation
+#import "SMCalloutView.h"
 
-- (id)initWithCoder:(NSCoder *)aDecoder {
-    if (self = [super initWithCoder:aDecoder]) {
-        [self commonInit];
+@implementation MBXAnnotation {
+    CLLocationCoordinate2D _coordinate;
+}
+
+@synthesize coordinate = _coordinate;
+
++ (instancetype)annotationWithLocation:(CLLocationCoordinate2D)coordinate {
+    return [[self alloc] initWithLocation:coordinate];
+}
+
+- (instancetype)initWithLocation:(CLLocationCoordinate2D)coordinate {
+    if (self = [super init]) {
+        _coordinate = coordinate;
     }
     return self;
 }
 
-- (instancetype)initWithFrame:(CGRect)frame {
-    if (self = [super initWithFrame:frame]) {
-        [self commonInit];
-    }
-    return self;
-}
+@end
 
-- (instancetype)initWithImage:(UIImage *)image {
-    if (self = [super initWithImage:image]) {
-        [self commonInit];
-    }
-    return self;
-}
+@implementation MBXAnnotationView
 
-- (instancetype)initWithImage:(UIImage *)image highlightedImage:(UIImage *)highlightedImage {
-    if (self = [super initWithImage:image highlightedImage:highlightedImage]) {
-        [self commonInit];
-    }
-    return self;
-}
-
-- (void)commonInit {
-    self.userInteractionEnabled = YES;
-}
-
-/*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect {
-    // Drawing code
-}
-*/
+//- (id)initWithCoder:(NSCoder *)aDecoder {
+//    if (self = [super initWithCoder:aDecoder]) {
+//        [self commonInit];
+//    }
+//    return self;
+//}
+//
+//- (void)commonInit {
+//    
+//}
+//
+//- (void)didMoveToSuperview {
+//    [super didMoveToSuperview];
+//}
 
 @end
