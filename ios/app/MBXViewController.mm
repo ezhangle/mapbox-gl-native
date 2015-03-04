@@ -7,15 +7,18 @@
 
 #import <CoreLocation/CoreLocation.h>
 #import <QuartzCore/QuartzCore.h>
+#import "MBXAnnotation.h"
 
 static UIColor *const kTintColor = [UIColor colorWithRed:0.120 green:0.550 blue:0.670 alpha:1.000];
 
-static NSDictionary *const kStyles = @{
-    @"bright-v6":    @"Bright",
-    @"basic-v6":     @"Basic",
-    @"outdoors-v6":  @"Outdoors",
-    @"satellite-v6": @"Satellite"
-};
+static NSArray *const kStyleNames = @[
+    @"Bright",
+    @"Basic",
+    @"Outdoors",
+    @"Satellite"
+];
+
+static NSString *const kStyleVersion = @"v7";
 
 @interface MBXViewController () <UIActionSheetDelegate, CLLocationManagerDelegate>
 
@@ -90,7 +93,7 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
     UIButton *titleButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [titleButton setFrame:CGRectMake(0, 0, 120, 40)];
-    [titleButton setTitle:[[kStyles allValues] firstObject] forState:UIControlStateNormal];
+    [titleButton setTitle:[kStyleNames firstObject] forState:UIControlStateNormal];
     [titleButton setTitleColor:kTintColor forState:UIControlStateNormal];
     [titleButton addTarget:self action:@selector(cycleStyles) forControlEvents:UIControlEventTouchUpInside];
     self.navigationItem.titleView = titleButton;
@@ -108,7 +111,7 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
 - (void)viewDidAppear:(BOOL)animated
 {
-    [super viewWillAppear:animated];
+    [super viewDidAppear:animated];
 
     self.features = [NSMutableArray array];
 
@@ -124,19 +127,16 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
             CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
                                                                   [feature[@"geometry"][@"coordinates"][0] doubleValue]);
             CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
-            UIImageView *pinView = [[UIImageView alloc] initWithImage:self.pin];
-            pinView.center = p;
-            pinView.userInteractionEnabled = YES;
-            [self.view addSubview:pinView];
-            
-            [pinView addGestureRecognizer:self.tapRecognizer];
-
-            feature[@"view"] = pinView;
-
-            [self.features addObject:feature];
+            MBXAnnotation *ann = [[MBXAnnotation alloc] initWithImage:self.pin];
+            ann.location = c;
+            ann.center = p;
+            ann.userInteractionEnabled = YES;
+            [ann addGestureRecognizer:self.tapRecognizer];
+            [self.mapView.glView addSubview:ann];
+            [self.features addObject:ann];
         }
     }
-
+    
     self.lastCenter = self.mapView.centerCoordinate;
     self.lastZoom = self.mapView.zoomLevel;
 }
@@ -157,12 +157,13 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
         self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
         self.mapView.zoomLevel != self.lastZoom) {
-        for (NSDictionary *feature in self.features) {
-            CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
-                                                                  [feature[@"geometry"][@"coordinates"][0] doubleValue]);
-            CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
+        for (MBXAnnotation *ann in self.features) {
+            CGPoint p = [self.mapView convertCoordinate:ann.location toPointToView:self.mapView];
             if (CGRectContainsPoint(self.mapView.bounds, p)) {
-                ((UIView *)feature[@"view"]).center = p;
+                ann.center = p;
+                [ann setHidden:NO];
+            } else {
+                [ann setHidden:YES];
             }
         }
 
@@ -244,18 +245,21 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
     if ( ! styleName)
     {
-        styleName = [[kStyles allKeys] firstObject];
+        styleName = [kStyleNames firstObject];
     }
     else
     {
-        NSUInteger index = [[kStyles allValues] indexOfObject:styleName] + 1;
-        if (index == [[kStyles allKeys] count]) index = 0;
-        styleName = [[kStyles allKeys] objectAtIndex:index];
+        NSUInteger index = [kStyleNames indexOfObject:styleName] + 1;
+        if (index == [kStyleNames count]) index = 0;
+        styleName = [kStyleNames objectAtIndex:index];
     }
 
-    [self.mapView useBundledStyleNamed:styleName];
+    [self.mapView useBundledStyleNamed:
+        [[[styleName lowercaseString]
+        stringByAppendingString:@"-"]
+        stringByAppendingString:kStyleVersion]];
 
-    [titleButton setTitle:kStyles[styleName] forState:UIControlStateNormal];
+    [titleButton setTitle:styleName forState:UIControlStateNormal];
 }
 
 - (void)locateUser

@@ -12,10 +12,10 @@
 #include <limits>
 
 namespace mbgl {
-
+    
 class TransformState {
     friend class Transform;
-
+    
 public:
     // Matrix
     void matrixFor(mat4& matrix, const Tile::ID& id) const;
@@ -82,6 +82,11 @@ private:
     double x = 0, y = 0;
     double angle = 0;
     double scale = 1;
+    
+    // Sample Location Data
+    std::array<LatLng, 4> sampleLocations = {{LatLng(37.76027, -122.42709), LatLng(37.76145, -122.42397), LatLng(37.76181, -122.42181), LatLng(37.76168, -122.41960)}};
+    std::array<mbgl::vec2<double>, 4> sampleLocationsScreenCooridnates = std::array<mbgl::vec2<double>, 4>();
+    
 };
 
 }

@@ -56,7 +56,6 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 @interface MGLMapView () <UIGestureRecognizerDelegate, GLKViewDelegate>
 
 @property (nonatomic) EAGLContext *context;
-@property (nonatomic) GLKView *glView;
 @property (nonatomic) NSOperationQueue *regionChangeDelegateQueue;
 @property (nonatomic) UIImageView *compass;
 @property (nonatomic) UIImageView *logoBug;
@@ -158,7 +157,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 {
     if ( ! styleJSON)
     {
-        [self useBundledStyleNamed:@"bright-v6"];
+        [self useBundledStyleNamed:@"bright-v7"];
     }
     else
     {

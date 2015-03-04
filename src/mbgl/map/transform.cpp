@@ -57,7 +57,7 @@ void Transform::_moveBy(const double dx, const double dy, const std::chrono::ste
     view.notifyMapChange(duration != std::chrono::steady_clock::duration::zero() ?
                            MapChangeRegionWillChangeAnimated :
                            MapChangeRegionWillChange);
-
+    
     final.x = current.x + std::cos(current.angle) * dx + std::sin(current.angle) * dy;
     final.y = current.y + std::cos(current.angle) * dy + std::sin(-current.angle) * dx;
 

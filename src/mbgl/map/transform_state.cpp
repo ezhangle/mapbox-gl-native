@@ -252,7 +252,6 @@ bool TransformState::isChanging() const {
     return rotating || scaling || panning;
 }
 
-
 #pragma mark - (private helper functions)
 
 

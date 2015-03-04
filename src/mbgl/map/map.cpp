@@ -482,7 +482,6 @@ double Map::getMaxZoom() const {
     return transform.getMaxZoom();
 }
 
-
 #pragma mark - Rotation
 
 void Map::rotateBy(double sx, double sy, double ex, double ey, std::chrono::steady_clock::duration duration) {
