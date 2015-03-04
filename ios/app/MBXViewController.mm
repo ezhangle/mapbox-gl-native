@@ -130,7 +130,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
             MBXAnnotation *ann = [[MBXAnnotation alloc] initWithImage:self.pin];
             ann.location = c;
             ann.center = p;
-            ann.userInteractionEnabled = YES;
             [ann addGestureRecognizer:self.tapRecognizer];
             [self.mapView.glView addSubview:ann];
             [self.features addObject:ann];
