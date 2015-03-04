@@ -16,6 +16,8 @@
 
 #import "MGLTypes.h"
 #import "MGLStyleFunctionValue.h"
+#import "MGLAnnotation.h"
+#import "MGLAnnotationView.h"
 
 #import "UIColor+MGLAdditions.h"
 #import "NSArray+MGLAdditions.h"
@@ -90,10 +92,14 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 
 @end
 
-@implementation MGLMapView
+@implementation MGLMapView {
+    NSMutableArray *_annotations;
+    NSMutableDictionary *_annotationViewsByAnnotation;
+}
 
 #pragma mark - Setup & Teardown -
 
+@synthesize annotations = _annotations;
 @dynamic debugActive;
 
 class MBGLView;
@@ -278,6 +284,9 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     container.translatesAutoresizingMaskIntoConstraints = NO;
     [container addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleCompassTapGesture:)]];
     [self addSubview:container];
+    
+    _annotations = [NSMutableArray array];
+    _annotationViewsByAnnotation = [NSMutableDictionary dictionary];
 
     self.viewControllerForLayoutGuides = nil;
 
@@ -1353,6 +1362,30 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
         };
 
     return MGLStyleAllowedTypes;
+}
+
+#pragma mark - Annotations -
+
+- (void)addAnnotation:(id <MGLAnnotation>)annotation {
+    [_annotations addObject:annotation];
+}
+
+- (void)addAnnotations:(NSArray *)annotations {
+    [_annotations addObjectsFromArray:annotations];
+}
+
+- (void)removeAnnotation:(id <MGLAnnotation>)annotation {
+    [_annotations removeObject:annotation];
+    [_annotationViewsByAnnotation removeObjectForKey:annotation];
+}
+
+- (void)removeAnnotations:(NSArray *)annotations {
+    [_annotations removeObjectsInArray:annotations];
+    [_annotationViewsByAnnotation removeObjectsForKeys:annotations];
+}
+
+- (MGLAnnotationView *)viewForAnnotation:(id <MGLAnnotation>)annotation {
+    return _annotationViewsByAnnotation[annotation];
 }
 
 #pragma mark - Utility -

@@ -25,6 +25,7 @@ static NSString *const kStyleVersion = @"v7";
 @property (nonatomic) UITapGestureRecognizer *tapRecognizer;
 @property (nonatomic) CLLocationManager *locationManager;
 @property (nonatomic) NSMutableArray *features;
+@property (nonatomic) MBXAnnotationView *selectedAnnotationView;
 @property (nonatomic) UIImage *pin;
 @property (nonatomic) CLLocationCoordinate2D lastCenter;
 @property (nonatomic) CGFloat lastZoom;

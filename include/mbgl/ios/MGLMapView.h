@@ -3,7 +3,8 @@
 #import <GLKit/GLKit.h>
 #import <OpenGLES/EAGL.h>
 
-@protocol MGLMapViewDelegate;
+@class MGLAnnotationView;
+@protocol MGLMapViewDelegate, MGLAnnotation;
 
 /** An MGLMapView object provides an embeddable map interface, similar to the one provided by Apple's MapKit. You use this class to display map information and to manipulate the map contents from your application. You can center the map on a given coordinate, specify the size of the area you want to display, and style the features of the map to fit your application's use case.
 *
@@ -178,6 +179,17 @@
 /** Sets the map style to a named, bundled style.
 *   @param styleName The map style name to use. */
 - (void)useBundledStyleNamed:(NSString *)styleName;
+
+#pragma mark - Annotating the map
+
+@property (nonatomic, readonly) NSArray *annotations;
+@property (nonatomic) MGLAnnotationView *selectedAnnotationView;
+
+- (void)addAnnotation:(id <MGLAnnotation>)annotation;
+- (void)addAnnotations:(NSArray *)annotations;
+- (void)removeAnnotation:(id <MGLAnnotation>)annotation;
+- (void)removeAnnotations:(NSArray *)annotations;
+- (MGLAnnotationView *)viewForAnnotation:(id <MGLAnnotation>)annotation;
 
 #pragma mark - Debugging
 
