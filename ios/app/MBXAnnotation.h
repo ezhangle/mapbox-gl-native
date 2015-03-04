@@ -11,6 +11,6 @@
 
 @interface MBXAnnotation : UIImageView
 
-@property (assign) CLLocationCoordinate2D location;
+@property (assign) CLLocationCoordinate2D coordinate;
 
 @end

@@ -128,7 +128,7 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
                                                                   [feature[@"geometry"][@"coordinates"][0] doubleValue]);
             CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
             MBXAnnotation *ann = [[MBXAnnotation alloc] initWithImage:self.pin];
-            ann.location = c;
+            ann.coordinate = c;
             ann.center = p;
             [ann addGestureRecognizer:self.tapRecognizer];
             [self.mapView.glView addSubview:ann];
@@ -157,7 +157,7 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
         self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
         self.mapView.zoomLevel != self.lastZoom) {
         for (MBXAnnotation *ann in self.features) {
-            CGPoint p = [self.mapView convertCoordinate:ann.location toPointToView:self.mapView];
+            CGPoint p = [self.mapView convertCoordinate:ann.coordinate toPointToView:self.mapView];
             if (CGRectContainsPoint(self.mapView.bounds, p)) {
                 ann.center = p;
                 [ann setHidden:NO];
