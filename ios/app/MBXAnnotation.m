@@ -8,8 +8,6 @@
 
 #import "MBXAnnotation.h"
 
-#import "SMCalloutView.h"
-
 @implementation MBXAnnotation {
     CLLocationCoordinate2D _coordinate;
     NSString *_title;
@@ -41,40 +39,4 @@
 @end
 
 @implementation MBXAnnotationView
-
-//- (id)initWithCoder:(NSCoder *)aDecoder {
-//    if (self = [super initWithCoder:aDecoder]) {
-//        [self commonInit];
-//    }
-//    return self;
-//}
-//
-//- (instancetype)initWithFrame:(CGRect)frame {
-//    if (self = [super initWithFrame:frame]) {
-//        [self commonInit];
-//    }
-//    return self;
-//}
-//
-//- (instancetype)initWithImage:(UIImage *)image {
-//    if (self = [super initWithImage:image]) {
-//        [self commonInit];
-//    }
-//    return self;
-//}
-//
-//- (instancetype)initWithImage:(UIImage *)image highlightedImage:(UIImage *)highlightedImage {
-//    if (self = [super initWithImage:image highlightedImage:highlightedImage]) {
-//        [self commonInit];
-//    }
-//    return self;
-//}
-//
-//- (void)commonInit {
-//}
-//
-//- (void)didMoveToSuperview {
-//    [super didMoveToSuperview];
-//}
-
 @end
