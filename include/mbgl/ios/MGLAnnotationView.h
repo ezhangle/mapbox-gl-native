@@ -15,10 +15,7 @@
 
 @property (nonatomic) id <MGLAnnotation> annotation;
 
-//! The receiver’s title string.
-@property (nonatomic) NSString *title;
-
-//! The receiver’s subtitle string.
-@property (nonatomic) NSString *subtitle;
+//! The callout view that pops up when the receiver is selected.
+@property (nonatomic) SMCalloutView *calloutView;
 
 @end

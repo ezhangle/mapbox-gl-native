@@ -14,9 +14,9 @@
 
 @interface MBXAnnotation : NSObject <MGLAnnotation>
 
-+ (instancetype)annotationWithLocation:(CLLocationCoordinate2D)coordinate;
++ (instancetype)annotationWithLocation:(CLLocationCoordinate2D)coordinate title:(NSString *)title subtitle:(NSString *)subtitle;
 
-- (instancetype)initWithLocation:(CLLocationCoordinate2D)coordinate;
+- (instancetype)initWithLocation:(CLLocationCoordinate2D)coordinate title:(NSString *)title subtitle:(NSString *)subtitle;
 
 @end
 

@@ -10,13 +10,6 @@
 
 #import "../../calloutview/SMCalloutView.h"
 
-@interface MGLAnnotationView ()
-
-//! The callout view that pops up when the receiver is selected.
-@property (nonatomic) SMCalloutView *calloutView;
-
-@end
-
 @implementation MGLAnnotationView
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
@@ -56,30 +49,6 @@
     [super didMoveToSuperview];
     
     [self.superview addSubview:self.calloutView];
-}
-
-- (NSString *)title {
-    return self.calloutView.title;
-}
-
-- (void)setTitle:(NSString *)title {
-    self.calloutView.title = title;
-}
-
-- (NSSet *)keyPathsForValuesAffectingTitle {
-    return [NSSet setWithObject:@"calloutview.title"];
-}
-
-- (NSString *)subtitle {
-    return self.calloutView.subtitle;
-}
-
-- (void)setSubtitle:(NSString *)subtitle {
-    self.calloutView.subtitle = subtitle;
-}
-
-- (NSSet *)keyPathsForValuesAffectingSubtitle {
-    return [NSSet setWithObject:@"calloutview.subtitle"];
 }
 
 @end

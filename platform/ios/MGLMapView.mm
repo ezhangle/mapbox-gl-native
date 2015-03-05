@@ -19,6 +19,8 @@
 #import "MGLAnnotation.h"
 #import "MGLAnnotationView.h"
 
+#import "../../calloutview/SMCalloutView.h"
+
 #import "UIColor+MGLAdditions.h"
 #import "NSArray+MGLAdditions.h"
 #import "NSDictionary+MGLAdditions.h"
@@ -73,6 +75,11 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 @property (nonatomic) CGFloat quickZoomStart;
 @property (nonatomic, getter=isAnimatingGesture) BOOL animatingGesture;
 @property (nonatomic, readonly, getter=isRotationAllowed) BOOL rotationAllowed;
+@property (nonatomic) CLLocationCoordinate2D lastCenter;
+@property (nonatomic) CGFloat lastZoom;
+
+@property (nonatomic) id <MGLAnnotation> selectedAnnotation;
+@property (nonatomic) UITapGestureRecognizer *annotationTap;
 
 @end
 
@@ -93,13 +100,12 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 @end
 
 @implementation MGLMapView {
-    NSMutableArray *_annotations;
     NSMutableDictionary *_annotationViewsByAnnotation;
+    UIImage *_pinImage;
 }
 
 #pragma mark - Setup & Teardown -
 
-@synthesize annotations = _annotations;
 @dynamic debugActive;
 
 class MBGLView;
@@ -285,8 +291,11 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     [container addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleCompassTapGesture:)]];
     [self addSubview:container];
     
-    _annotations = [NSMutableArray array];
     _annotationViewsByAnnotation = [NSMutableDictionary dictionary];
+    _pinImage = [[self class] resourceImageNamed:@"pin"];
+    
+    self.annotationTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleAnnotationTapGesture:)];
+    self.annotationTap.numberOfTapsRequired = 1;
 
     self.viewControllerForLayoutGuides = nil;
 
@@ -538,6 +547,13 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 }
 
 #pragma mark - Gestures -
+
+- (void)handleAnnotationTapGesture:(UITapGestureRecognizer *)tapRecognizer {
+    MGLAnnotationView *annotationView = (MGLAnnotationView *)tapRecognizer.view;
+    NSAssert(!annotationView || [annotationView isKindOfClass:[MGLAnnotationView class]], @"Tap recognizer %@ should only be added to instances of MGLAnnotationView, not %@", tapRecognizer, [annotationView class]);
+    self.selectedAnnotation = annotationView.annotation;
+    [annotationView.calloutView presentCalloutFromRect:tapRecognizer.view.bounds inView:tapRecognizer.view constrainedToView:self animated:YES];
+}
 
 - (void)handleCompassTapGesture:(id)sender
 {
@@ -1366,27 +1382,79 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 #pragma mark - Annotations -
 
+- (NSArray *)annotations {
+    return [_annotationViewsByAnnotation allKeys];
+}
+
 - (void)addAnnotation:(id <MGLAnnotation>)annotation {
-    [_annotations addObject:annotation];
+    MGLAnnotationView *annotationView = [[MGLAnnotationView alloc] initWithImage:_pinImage];
+    annotationView.annotation = annotation;
+    annotationView.center = [self convertCoordinate:annotation.coordinate toPointToView:self];
+    [_annotationViewsByAnnotation setObject:annotationView forKey:annotation];
+    [self.glView addSubview:annotationView];
+    [annotationView addGestureRecognizer:self.annotationTap];
+    [self updateAnnotation:annotation];
 }
 
 - (void)addAnnotations:(NSArray *)annotations {
-    [_annotations addObjectsFromArray:annotations];
+    for (id <MGLAnnotation> annotation in annotations) {
+        [self addAnnotation:annotation];
+    }
 }
 
 - (void)removeAnnotation:(id <MGLAnnotation>)annotation {
-    [_annotations removeObject:annotation];
+    [[_annotationViewsByAnnotation objectForKey:annotation] removeFromSuperview];
     [_annotationViewsByAnnotation removeObjectForKey:annotation];
 }
 
 - (void)removeAnnotations:(NSArray *)annotations {
-    [_annotations removeObjectsInArray:annotations];
-    [_annotationViewsByAnnotation removeObjectsForKeys:annotations];
+    for (id <MGLAnnotation> annotation in annotations) {
+        [self removeAnnotation:annotation];
+    }
 }
 
 - (MGLAnnotationView *)viewForAnnotation:(id <MGLAnnotation>)annotation {
     return _annotationViewsByAnnotation[annotation];
 }
+
+- (void)updateAnnotations {
+    if (self.centerCoordinate.latitude != self.lastCenter.latitude   ||
+        self.centerCoordinate.longitude != self.lastCenter.longitude ||
+        self.zoomLevel != self.lastZoom) {
+        for (id <MGLAnnotation> annotation in self.annotations) {
+            [self updateAnnotation:annotation];
+        }
+        
+        self.lastCenter = self.centerCoordinate;
+        self.lastZoom = self.zoomLevel;
+    }
+}
+
+- (void)updateAnnotation:(id <MGLAnnotation>)annotation {
+    MGLAnnotationView *annotationView = [_annotationViewsByAnnotation objectForKey:annotation];
+    CGPoint center = [self convertCoordinate:annotationView.annotation.coordinate toPointToView:self];
+    if (CGRectContainsPoint(self.bounds, center)) {
+        annotationView.center = center;
+        [annotationView setHidden:NO];
+        annotationView.calloutView.title = annotation.title;
+        annotationView.calloutView.subtitle = annotation.subtitle;
+    } else {
+        [annotationView setHidden:YES];
+    }
+}
+
+//- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+//    MGLAnnotationView *annotationView = _selectedAnnotation ? _annotationViewsByAnnotation[_selectedAnnotation] : nil;
+//    if (annotationView) {
+//        UIView *calloutCandidate = [annotationView hitTest:[annotationView convertPoint:point fromView:self] withEvent:event];
+//        
+//        if (calloutCandidate) {
+//            return calloutCandidate;
+//        }
+//    }
+//    
+//    return [super hitTest:point withEvent:event];
+//}
 
 #pragma mark - Utility -
 
@@ -1497,10 +1565,12 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
         }
         case mbgl::MapChangeRegionIsChanging:
         {
-             if ([self.delegate respondsToSelector:@selector(mapViewRegionIsChanging:)])
-             {
-                 [self.delegate mapViewRegionIsChanging:self];
-             }
+            [self updateAnnotations];
+            
+            if ([self.delegate respondsToSelector:@selector(mapViewRegionIsChanging:)])
+            {
+                [self.delegate mapViewRegionIsChanging:self];
+            }
         }
         case mbgl::MapChangeRegionDidChange:
         case mbgl::MapChangeRegionDidChangeAnimated:

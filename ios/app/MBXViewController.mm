@@ -22,13 +22,7 @@ static NSString *const kStyleVersion = @"v7";
 @interface MBXViewController () <UIActionSheetDelegate, CLLocationManagerDelegate>
 
 @property (nonatomic) MGLMapView *mapView;
-@property (nonatomic) UITapGestureRecognizer *tapRecognizer;
 @property (nonatomic) CLLocationManager *locationManager;
-@property (nonatomic) NSMutableArray *features;
-@property (nonatomic) MBXAnnotationView *selectedAnnotationView;
-@property (nonatomic) UIImage *pin;
-@property (nonatomic) CLLocationCoordinate2D lastCenter;
-@property (nonatomic) CGFloat lastZoom;
 
 @end
 
@@ -79,9 +73,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     self.view.tintColor = kTintColor;
     self.navigationController.navigationBar.tintColor = kTintColor;
     self.mapView.tintColor = kTintColor;
-    
-    self.tapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(showPopupForTapRecognizer:)];
-    self.tapRecognizer.numberOfTapsRequired = 1;
 
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"settings.png"]
                                                                              style:UIBarButtonItemStylePlain
@@ -110,8 +101,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 {
     [super viewDidAppear:animated];
 
-    self.features = [NSMutableArray array];
-
     id geojson = [NSJSONSerialization JSONObjectWithData:
                      [NSData dataWithContentsOfFile:
                         [[NSBundle mainBundle] pathForResource:@"features" ofType:@"json"]]
@@ -119,54 +108,24 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
                                               error:nil];
 
     if (geojson && [geojson isKindOfClass:[NSDictionary class]]) {
-        self.pin = [UIImage imageNamed:@"pin.png"];
         for (NSMutableDictionary *feature in geojson[@"features"]) {
             CLLocationCoordinate2D c = CLLocationCoordinate2DMake([feature[@"geometry"][@"coordinates"][1] doubleValue],
                                                                   [feature[@"geometry"][@"coordinates"][0] doubleValue]);
-            CGPoint p = [self.mapView convertCoordinate:c toPointToView:self.mapView];
-            MBXAnnotationView *annotationView = [[MBXAnnotationView alloc] initWithImage:self.pin];
-            annotationView.annotation = [MBXAnnotation annotationWithLocation:c];
-            annotationView.center = p;
-            [annotationView addGestureRecognizer:self.tapRecognizer];
-            [self.mapView.glView addSubview:annotationView];
-            [self.features addObject:annotationView];
+            MBXAnnotation *annotation = [MBXAnnotation annotationWithLocation:c title:feature[@"properties"][@"title"] subtitle:nil];
+            [self.mapView addAnnotation:annotation];
         }
     }
-    
-    self.lastCenter = self.mapView.centerCoordinate;
-    self.lastZoom = self.mapView.zoomLevel;
 }
 
-#pragma mark MGLMapViewDelegate
-
-- (void)mapViewRegionIsChanging:(MGLMapView *)mapView
-{
-    (void)mapView;
-    [self refresh];
-}
+//#pragma mark MGLMapViewDelegate
+//
+//- (void)mapViewRegionIsChanging:(MGLMapView *)mapView
+//{
+//    (void)mapView;
+//}
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
-
-- (void)refresh
-{
-    if (self.mapView.centerCoordinate.latitude != self.lastCenter.latitude   ||
-        self.mapView.centerCoordinate.longitude != self.lastCenter.longitude ||
-        self.mapView.zoomLevel != self.lastZoom) {
-        for (MBXAnnotationView *annotationView in self.features) {
-            CGPoint p = [self.mapView convertCoordinate:annotationView.annotation.coordinate toPointToView:self.mapView];
-            if (CGRectContainsPoint(self.mapView.bounds, p)) {
-                annotationView.center = p;
-                [annotationView setHidden:NO];
-            } else {
-                [annotationView setHidden:YES];
-            }
-        }
-
-        self.lastCenter = self.mapView.centerCoordinate;
-        self.lastZoom = self.mapView.zoomLevel;
-    }
-}
 
 - (void)saveState:(NSNotification *)notification
 {

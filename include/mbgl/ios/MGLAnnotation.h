@@ -8,9 +8,17 @@
 
 #import <Foundation/Foundation.h>
 
-@protocol MGLAnnotation <NSObject>
+@protocol MGLAnnotation <NSObject, NSCopying>
 
 //! The receiver’s center, expressed as a coordinate on the containing map.
-@property (assign) CLLocationCoordinate2D coordinate;
+@property (nonatomic, readonly) CLLocationCoordinate2D coordinate;
+
+@optional
+
+//! The receiver’s title string.
+@property (nonatomic, readonly, copy) NSString *title;
+
+//! The receiver’s subtitle string.
+@property (nonatomic, readonly, copy) NSString *subtitle;
 
 @end

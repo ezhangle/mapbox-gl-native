@@ -183,13 +183,11 @@
 #pragma mark - Annotating the map
 
 @property (nonatomic, readonly) NSArray *annotations;
-@property (nonatomic) MGLAnnotationView *selectedAnnotationView;
 
 - (void)addAnnotation:(id <MGLAnnotation>)annotation;
 - (void)addAnnotations:(NSArray *)annotations;
 - (void)removeAnnotation:(id <MGLAnnotation>)annotation;
 - (void)removeAnnotations:(NSArray *)annotations;
-- (MGLAnnotationView *)viewForAnnotation:(id <MGLAnnotation>)annotation;
 
 #pragma mark - Debugging
 
