@@ -61,6 +61,7 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 @interface MGLMapView () <UIGestureRecognizerDelegate, GLKViewDelegate>
 
 @property (nonatomic) EAGLContext *context;
+@property (nonatomic) GLKView *glView;
 @property (nonatomic) NSOperationQueue *regionChangeDelegateQueue;
 @property (nonatomic) UIImageView *compass;
 @property (nonatomic) UIImageView *logoBug;
