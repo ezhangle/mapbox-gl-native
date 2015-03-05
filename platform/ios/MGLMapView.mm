@@ -18,6 +18,7 @@
 #import "MGLStyleFunctionValue.h"
 #import "MGLAnnotation.h"
 #import "MGLAnnotationView.h"
+#import "MGLAnnotationView_Private.h"
 
 #import "../../calloutview/SMCalloutView.h"
 

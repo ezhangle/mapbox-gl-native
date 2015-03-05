@@ -7,8 +7,15 @@
 //
 
 #import "MGLAnnotationView.h"
+#import "MGLAnnotationView_Private.h"
 
 #import "../../calloutview/SMCalloutView.h"
+
+@interface MGLAnnotationView ()
+
+@property (nonatomic, readwrite) SMCalloutView *calloutView;
+
+@end
 
 @implementation MGLAnnotationView
 
