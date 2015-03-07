@@ -102,7 +102,7 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 @end
 
 @implementation MGLMapView {
-    NSMutableDictionary *_annotationViewsByAnnotation;
+    NSMutableArray *_annotationViews;
     UIImage *_pinImage;
 }
 
@@ -293,7 +293,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     [container addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleCompassTapGesture:)]];
     [self addSubview:container];
     
-    _annotationViewsByAnnotation = [NSMutableDictionary dictionary];
+    _annotationViews = [NSMutableArray array];
     _pinImage = [[self class] resourceImageNamed:@"pin"];
     
     self.annotationTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleAnnotationTapGesture:)];
@@ -328,6 +328,13 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     [twoFingerTap requireGestureRecognizerToFail:_rotate];
     [self addGestureRecognizer:twoFingerTap];
 
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture:)];
+    tap.numberOfTouchesRequired = 1;
+    [tap requireGestureRecognizerToFail:doubleTap];
+    [tap requireGestureRecognizerToFail:self.annotationTap];
+    tap.delegate = self;
+    [self addGestureRecognizer:tap];
+    
     if ([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone)
     {
         _quickZoom = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleQuickZoomGesture:)];
@@ -692,6 +699,12 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
         [self notifyMapChange:@(mbgl::MapChangeRegionDidChangeAnimated)];
     }
+}
+
+- (void)handleTapGesture:(UITapGestureRecognizer *)tap {
+    (void)tap;
+    MGLAnnotationView *annotationView = [self viewForAnnotation:self.selectedAnnotation];
+    [annotationView.calloutView dismissCalloutAnimated:YES];
 }
 
 - (void)handleDoubleTapGesture:(UITapGestureRecognizer *)doubleTap
@@ -1385,14 +1398,14 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 #pragma mark - Annotations -
 
 - (NSArray *)annotations {
-    return [_annotationViewsByAnnotation allKeys];
+    return [_annotationViews valueForKey:@"annotation"];
 }
 
 - (void)addAnnotation:(id <MGLAnnotation>)annotation {
     MGLAnnotationView *annotationView = [[MGLAnnotationView alloc] initWithImage:_pinImage];
     annotationView.annotation = annotation;
     annotationView.center = [self convertCoordinate:annotation.coordinate toPointToView:self];
-    [_annotationViewsByAnnotation setObject:annotationView forKey:annotation];
+    [_annotationViews addObject:annotationView];
     [self.glView addSubview:annotationView];
     [annotationView addGestureRecognizer:self.annotationTap];
     [self updateAnnotation:annotation];
@@ -1405,8 +1418,9 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 }
 
 - (void)removeAnnotation:(id <MGLAnnotation>)annotation {
-    [[_annotationViewsByAnnotation objectForKey:annotation] removeFromSuperview];
-    [_annotationViewsByAnnotation removeObjectForKey:annotation];
+    MGLAnnotationView *annotationView = [self viewForAnnotation:annotation];
+    [annotationView removeFromSuperview];
+    [_annotationViews removeObject:annotationView];
 }
 
 - (void)removeAnnotations:(NSArray *)annotations {
@@ -1416,7 +1430,12 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 }
 
 - (MGLAnnotationView *)viewForAnnotation:(id <MGLAnnotation>)annotation {
-    return _annotationViewsByAnnotation[annotation];
+    NSArray *candidateAnnotationViews = [_annotationViews filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
+        (void)bindings;
+        return [evaluatedObject annotation] == annotation;
+    }]];
+    // TODO: Cycle through the candidates.
+    return [candidateAnnotationViews firstObject];
 }
 
 - (void)updateAnnotations {
@@ -1433,7 +1452,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 }
 
 - (void)updateAnnotation:(id <MGLAnnotation>)annotation {
-    MGLAnnotationView *annotationView = [_annotationViewsByAnnotation objectForKey:annotation];
+    MGLAnnotationView *annotationView = [self viewForAnnotation:annotation];
     CGPoint center = [self convertCoordinate:annotationView.annotation.coordinate toPointToView:self];
     if (CGRectContainsPoint(self.bounds, center)) {
         annotationView.center = center;
