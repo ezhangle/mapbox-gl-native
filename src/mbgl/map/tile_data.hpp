@@ -23,7 +23,7 @@ typedef struct uv_loop_s uv_loop_t;
 namespace mbgl {
 
 class Map;
-class FileSource;
+class Environment;
 class Painter;
 class SourceInfo;
 class StyleLayer;
@@ -48,10 +48,10 @@ public:
     };
 
 public:
-    TileData(Tile::ID const& id, const SourceInfo&, FileSource&);
+    TileData(Tile::ID const &id, const SourceInfo &, Environment &);
     ~TileData();
 
-    void request(uv::worker&, uv_loop_t&, float pixelRatio, std::function<void ()> callback);
+    void request(uv::worker&, float pixelRatio, std::function<void ()> callback);
     void reparse(uv::worker&, std::function<void ()> callback);
     void cancel();
     const std::string toString() const;
@@ -62,9 +62,8 @@ public:
 
     // Override this in the child class.
     virtual void parse() = 0;
-    virtual void render(Painter &painter, util::ptr<StyleLayer> layer_desc, const mat4 &matrix) = 0;
-    virtual bool hasData(StyleLayer const& layer_desc) const = 0;
-
+    virtual void render(Painter &painter, const StyleLayer &layer_desc, const mat4 &matrix) = 0;
+    virtual bool hasData(StyleLayer const &layer_desc) const = 0;
 
 public:
     const Tile::ID id;
@@ -73,7 +72,7 @@ public:
 
 public:
     const SourceInfo& source;
-    FileSource& fileSource;
+    Environment &env;
 
 protected:
     Request *req = nullptr;

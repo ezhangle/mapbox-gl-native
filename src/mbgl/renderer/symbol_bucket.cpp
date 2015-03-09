@@ -30,8 +30,8 @@ SymbolBucket::~SymbolBucket() {
     // Do not remove. header file only contains forward definitions to unique pointers.
 }
 
-void SymbolBucket::render(Painter &painter, util::ptr<StyleLayer> layer_desc,
-                          const Tile::ID &id, const mat4 &matrix) {
+void SymbolBucket::render(Painter &painter, const StyleLayer &layer_desc, const Tile::ID &id,
+                          const mat4 &matrix) {
     painter.renderSymbol(*this, layer_desc, id, matrix);
 }
 
@@ -172,7 +172,7 @@ void SymbolBucket::addFeatures(const VectorTileLayer &layer, const FilterExpress
     if (layout.text.justify == TextJustifyType::Right) justify = 1;
     else if (layout.text.justify == TextJustifyType::Left) justify = 0;
 
-    const FontStack &fontStack = glyphStore.getFontStack(layout.text.font);
+    const auto &fontStack = glyphStore.getFontStack(layout.text.font);
 
     for (const SymbolFeature &feature : features) {
         if (!feature.geometry.size()) continue;
@@ -183,7 +183,7 @@ void SymbolBucket::addFeatures(const VectorTileLayer &layer, const FilterExpress
 
         // if feature has text, shape the text
         if (feature.label.length()) {
-            shaping = fontStack.getShaping(
+            shaping = fontStack->getShaping(
                 /* string */ feature.label,
                 /* maxWidth: ems */ layout.text.max_width * 24,
                 /* lineHeight: ems */ layout.text.line_height * 24,

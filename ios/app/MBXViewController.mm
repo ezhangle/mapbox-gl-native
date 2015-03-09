@@ -14,7 +14,8 @@ static NSArray *const kStyleNames = @[
     @"Bright",
     @"Basic",
     @"Outdoors",
-    @"Satellite"
+    @"Satellite",
+    @"Hybrid",
 ];
 
 static NSString *const kStyleVersion = @"v7";
