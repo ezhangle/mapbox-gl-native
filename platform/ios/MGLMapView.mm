@@ -82,7 +82,6 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 @property (nonatomic) CGFloat lastZoom;
 
 @property (nonatomic) id <MGLAnnotation> selectedAnnotation;
-@property (nonatomic) UITapGestureRecognizer *annotationTap;
 
 @end
 
@@ -299,9 +298,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     _annotationViews = [NSMutableArray array];
     _pinImage = [[self class] resourceImageNamed:@"pin"];
     
-    self.annotationTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleAnnotationTapGesture:)];
-    self.annotationTap.numberOfTapsRequired = 1;
-
     self.viewControllerForLayoutGuides = nil;
 
     // setup interaction
@@ -334,7 +330,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture:)];
     tap.numberOfTouchesRequired = 1;
     [tap requireGestureRecognizerToFail:doubleTap];
-    [tap requireGestureRecognizerToFail:self.annotationTap];
     tap.delegate = self;
     [self addGestureRecognizer:tap];
     
@@ -560,11 +555,27 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 #pragma mark - Gestures -
 
+- (void)selectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {
+    self.selectedAnnotation = annotation;
+    MGLAnnotationView *selectedAnnotationView = [self viewForAnnotation:annotation];
+    for (MGLAnnotationView *annotationView in _annotationViews) {
+        if (annotationView != selectedAnnotationView) {
+            [annotationView.calloutView dismissCalloutAnimated:animated];
+        }
+    }
+    [selectedAnnotationView.calloutView presentCalloutFromRect:selectedAnnotationView.bounds inView:selectedAnnotationView constrainedToView:self animated:animated];
+}
+
+- (void)deselectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {
+    MGLAnnotationView *selectedAnnotationView = [self viewForAnnotation:annotation];
+    [selectedAnnotationView.calloutView dismissCalloutAnimated:animated];
+    self.selectedAnnotation = nil;
+}
+
 - (void)handleAnnotationTapGesture:(UITapGestureRecognizer *)tapRecognizer {
-    MGLAnnotationView *annotationView = (MGLAnnotationView *)tapRecognizer.view;
-    NSAssert(!annotationView || [annotationView isKindOfClass:[MGLAnnotationView class]], @"Tap recognizer %@ should only be added to instances of MGLAnnotationView, not %@", tapRecognizer, [annotationView class]);
-    self.selectedAnnotation = annotationView.annotation;
-    [annotationView.calloutView presentCalloutFromRect:tapRecognizer.view.bounds inView:tapRecognizer.view constrainedToView:self animated:YES];
+    MGLAnnotationView *selectedAnnotationView = (MGLAnnotationView *)tapRecognizer.view;
+    NSAssert(!selectedAnnotationView || [selectedAnnotationView isKindOfClass:[MGLAnnotationView class]], @"Tap recognizer %@ should only be added to instances of MGLAnnotationView, not %@", tapRecognizer, [selectedAnnotationView class]);
+    [self selectAnnotation:selectedAnnotationView.annotation animated:YES];
 }
 
 - (void)handleCompassTapGesture:(id)sender
@@ -706,8 +717,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 - (void)handleTapGesture:(UITapGestureRecognizer *)tap {
     (void)tap;
-    MGLAnnotationView *annotationView = [self viewForAnnotation:self.selectedAnnotation];
-    [annotationView.calloutView dismissCalloutAnimated:YES];
+    [self deselectAnnotation:self.selectedAnnotation animated:YES];
 }
 
 - (void)handleDoubleTapGesture:(UITapGestureRecognizer *)doubleTap
@@ -1442,7 +1452,9 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     annotationView.center = [self convertCoordinate:annotation.coordinate toPointToView:self];
     [_annotationViews addObject:annotationView];
     [self.glView addSubview:annotationView];
-    [annotationView addGestureRecognizer:self.annotationTap];
+    UITapGestureRecognizer *annotationTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleAnnotationTapGesture:)];
+    annotationTap.numberOfTapsRequired = 1;
+    [annotationView addGestureRecognizer:annotationTap];
     [self updateAnnotation:annotation];
 }
 
