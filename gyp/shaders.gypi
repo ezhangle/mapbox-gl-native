@@ -8,7 +8,7 @@
         {
           'action_name': 'Build Shaders',
           'inputs': [
-            '../scripts/build-shaders.py',
+            '../scripts/build_shaders.py',
             '<!@(find src -name "*.glsl")'
           ],
           'outputs': [
@@ -16,7 +16,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/src/shader/shaders_gl.cpp',
             '<(SHARED_INTERMEDIATE_DIR)/src/shader/shaders_gles2.cpp',
           ],
-          'action': ['scripts/build-shaders.py', '<(SHARED_INTERMEDIATE_DIR)', '<@(_inputs)'],
+          'action': ['scripts/build_shaders.py', '<(SHARED_INTERMEDIATE_DIR)', '<@(_inputs)'],
         }
       ],
       'direct_dependent_settings': {

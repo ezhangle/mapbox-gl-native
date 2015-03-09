@@ -5,6 +5,9 @@ set -o pipefail
 
 CONFIG_FILE=$1
 
+export PATH="`pwd`/.mason:${PATH}"
+export MASON_DIR="`pwd`/.mason"
+
 if [ `uname -s` = 'Darwin' ]; then
     MASON_PLATFORM=${MASON_PLATFORM:-osx}
 fi
@@ -13,9 +16,6 @@ function finish {
     >&2 echo -en "\033[0m";
 }
 trap finish EXIT
-
-# Install mason
-. ./scripts/local_mason.sh
 
 case ${MASON_PLATFORM} in
     'ios')
@@ -44,7 +44,7 @@ case ${MASON_PLATFORM} in
         LIBCURL_VERSION=system
         LIBUV_VERSION=0.10.28
         ZLIB_VERSION=system
-        BOOST_VERSION=system
+        BOOST_VERSION=1.57.0
         NUNICODE_VERSION=1.5.1
         LIBZIP_VERSION=0.11.2
         ;;

@@ -94,8 +94,9 @@ Xcode/osx: macosx/mapboxgl-app.gyp config/osx.gypi styles/styles
 xosx-proj: Xcode/osx
 	open ./build/osx/macosx/mapboxgl-app.xcodeproj
 
+xosx: XCPRETTY := $(shell ./scripts/osx/xcpretty.sh)
 xosx: Xcode/osx
-	xcodebuild -project ./build/osx/macosx/mapboxgl-app.xcodeproj -configuration $(BUILDTYPE) -target osxapp -jobs $(JOBS)
+	xcodebuild -project ./build/osx/macosx/mapboxgl-app.xcodeproj -configuration $(BUILDTYPE) -target osxapp -jobs $(JOBS) $(XCPRETTY)
 
 run-xosx: xosx
 	"build/osx/Build/Products/$(BUILDTYPE)/Mapbox GL.app/Contents/MacOS/Mapbox GL"
@@ -115,11 +116,13 @@ Xcode/ios: ios/app/mapboxgl-app.gyp config/ios.gypi styles/styles
 ios-proj: Xcode/ios
 	open ./build/ios/ios/app/mapboxgl-app.xcodeproj
 
+ios: XCPRETTY := $(shell ./scripts/osx/xcpretty.sh)
 ios: Xcode/ios
-	xcodebuild -sdk iphoneos ARCHS="arm64 armv7 armv7s" PROVISIONING_PROFILE="2b532944-bf3d-4bf4-aa6c-a81676984ae8" -project ./build/ios/ios/app/mapboxgl-app.xcodeproj -configuration Release -target iosapp -jobs $(JOBS)
+	xcodebuild -sdk iphoneos ARCHS="arm64 armv7 armv7s" PROVISIONING_PROFILE="2b532944-bf3d-4bf4-aa6c-a81676984ae8" -project ./build/ios/ios/app/mapboxgl-app.xcodeproj -configuration Release -target iosapp -jobs $(JOBS) $(XCPRETTY)
 
+isim: XCPRETTY := $(shell ./scripts/osx/xcpretty.sh)
 isim: Xcode/ios
-	xcodebuild -sdk iphonesimulator ARCHS="x86_64 i386" -project ./build/ios/ios/app/mapboxgl-app.xcodeproj -configuration Debug -target iosapp -jobs $(JOBS)
+	xcodebuild -sdk iphonesimulator ARCHS="x86_64 i386" -project ./build/ios/ios/app/mapboxgl-app.xcodeproj -configuration Debug -target iosapp -jobs $(JOBS) $(XCPRETTY)
 
 # Legacy name
 iproj: ios-proj
