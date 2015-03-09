@@ -1511,19 +1511,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     }
 }
 
-//- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-//    MGLAnnotationView *annotationView = _selectedAnnotation ? _annotationViewsByAnnotation[_selectedAnnotation] : nil;
-//    if (annotationView) {
-//        UIView *calloutCandidate = [annotationView hitTest:[annotationView convertPoint:point fromView:self] withEvent:event];
-//        
-//        if (calloutCandidate) {
-//            return calloutCandidate;
-//        }
-//    }
-//    
-//    return [super hitTest:point withEvent:event];
-//}
-
 #pragma mark - Utility -
 
 + (CGFloat)degreesToRadians:(CGFloat)degrees
