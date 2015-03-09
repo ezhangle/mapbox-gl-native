@@ -302,4 +302,12 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
 #pragma clang diagnostic pop
 
+#pragma mark - MGLMapViewDelegate methods
+
+- (NSString *)mapView:(MGLMapView *)mapView symbolNameForAnnotation:(id <MGLAnnotation>)symbolName {
+    (void)mapView;
+    (void)symbolName;
+    return @"pin";
+}
+
 @end

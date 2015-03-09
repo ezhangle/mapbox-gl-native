@@ -209,6 +209,9 @@
 
 @optional
 
+//! Delegates implement this method to return a string containing the name of a symbol to use for the given annotation.
+- (NSString *)mapView:(MGLMapView *)mapView symbolNameForAnnotation:(id <MGLAnnotation>)symbolName;
+
 // Responding to Map Position Changes
 
 // TODO

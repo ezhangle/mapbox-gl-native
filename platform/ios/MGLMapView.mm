@@ -1429,7 +1429,15 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 }
 
 - (void)addAnnotation:(id <MGLAnnotation>)annotation {
-    MGLAnnotationView *annotationView = [[MGLAnnotationView alloc] initWithImage:_pinImage];
+    UIImage *image = _pinImage;
+    if ([self.delegate respondsToSelector:@selector(mapView:symbolNameForAnnotation:)]) {
+        NSString *imageName = [self.delegate mapView:self symbolNameForAnnotation:annotation];
+        if ([imageName length]) {
+            image = [[self class] resourceImageNamed:imageName];
+        }
+    }
+    
+    MGLAnnotationView *annotationView = [[MGLAnnotationView alloc] initWithImage:image];
     annotationView.annotation = annotation;
     annotationView.center = [self convertCoordinate:annotation.coordinate toPointToView:self];
     [_annotationViews addObject:annotationView];
