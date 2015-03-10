@@ -22,6 +22,8 @@
         '../include/mbgl/ios/MGLAnnotationView.h',
         '../platform/ios/MGLAnnotationView_Private.h',
         '../platform/ios/MGLAnnotationView.m',
+        '../platform/ios/MGLUserLocationAnnotationView.h',
+        '../platform/ios/MGLUserLocationAnnotationView.m',
         '../include/mbgl/ios/MGLStyleFunctionValue.h',
         '../platform/ios/MGLStyleFunctionValue.m',
         '../include/mbgl/ios/MGLTypes.h',

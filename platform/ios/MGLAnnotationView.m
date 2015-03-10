@@ -55,7 +55,11 @@
 - (void)didMoveToSuperview {
     [super didMoveToSuperview];
     
-    [self.superview addSubview:self.calloutView];
+    if (self.superview) {
+        [self.superview addSubview:self.calloutView];
+    } else {
+        [self.calloutView removeFromSuperview];
+    }
 }
 
 @end

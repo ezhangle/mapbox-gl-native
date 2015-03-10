@@ -1,7 +1,13 @@
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
 
-@class MGLAnnotationView;
+typedef NS_ENUM(NSUInteger, MGLUserTrackingMode) {
+    MGLUserTrackingModeNone              = 0,
+    MGLUserTrackingModeFollow            = 1,
+    MGLUserTrackingModeFollowWithHeading = 2
+};
+
+@class MGLAnnotationView, MGLUserLocationAnnotationView;
 @protocol MGLMapViewDelegate, MGLAnnotation;
 
 /** An MGLMapView object provides an embeddable map interface, similar to the one provided by Apple's MapKit. You use this class to display map information and to manipulate the map contents from your application. You can center the map on a given coordinate, specify the size of the area you want to display, and style the features of the map to fit your application's use case.
@@ -186,6 +192,27 @@
 - (void)addAnnotations:(NSArray *)annotations;
 - (void)removeAnnotation:(id <MGLAnnotation>)annotation;
 - (void)removeAnnotations:(NSArray *)annotations;
+
+#pragma mark - Locating the user
+
+/** A Boolean value indicating whether the map may display the user location.
+ 
+    This property does not indicate whether the user’s position is actually visible on the map, only whether the map view is allowed to display it. To determine whether the user’s position is visible, use the userLocationVisible property. The default value of this property is `NO`.
+
+    Setting this property to `YES` causes the map view to use the Core Location framework to find the current location. As long as this property is `YES`, the map view continues to track the user’s location and update it periodically.
+
+    On iOS 8 and above, your app must specify a value for `NSLocationWhenInUseUsageDescription` in its `Info.plist` to satisfy the requirements of the underlying Core Location framework when enabling this property.
+ */
+@property (nonatomic, assign) BOOL showsUserLocation;
+
+/** The annotation object representing the user’s current location. (read-only) */
+@property (nonatomic, strong, readonly) MGLUserLocationAnnotationView *userLocationAnnotationView;
+
+/** The mode used to track the user location. */
+@property (nonatomic, assign) MGLUserTrackingMode userTrackingMode;
+
+/** Whether the map view should display a heading calibration alert when necessary. The default value is `YES`. */
+@property (nonatomic, assign) BOOL displayHeadingCalibration;
 
 #pragma mark - Debugging
 
