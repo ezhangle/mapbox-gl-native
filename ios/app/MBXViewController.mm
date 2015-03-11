@@ -95,8 +95,9 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     settings = new mbgl::Settings_NSUserDefaults();
     [self restoreState:nil];
 
-    self.mapView.userTrackingMode = MGLUserTrackingModeFollowWithHeading;
     [self.mapView setCenterCoordinate:CLLocationCoordinate2DMake(37.776, -122.412) zoomLevel:14.5 animated:NO];
+    self.mapView.userTrackingMode = MGLUserTrackingModeFollowWithHeading;
+    self.mapView.showsUserLocation = YES;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -299,6 +300,9 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     }
 
     [self.locationManager stopUpdatingLocation];
+    
+    self.mapView.userTrackingMode = MGLUserTrackingModeFollowWithHeading;
+    self.mapView.showsUserLocation = YES;
 }
 
 #pragma clang diagnostic pop

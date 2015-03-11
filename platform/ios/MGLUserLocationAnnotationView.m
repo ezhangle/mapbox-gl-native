@@ -30,12 +30,17 @@
 #import "MGLAnnotation.h"
 #import "MGLMapView.h"
 
-@implementation MGLUserLocationAnnotation
+@implementation MGLUserLocationAnnotation {
+    CLLocationCoordinate2D _coordinate;
+}
+
+@synthesize coordinate = _coordinate;
 
 - (instancetype)init {
     if (self = [super init]) {
         _coordinate = CLLocationCoordinate2DMake(MAXFLOAT, MAXFLOAT);
     }
+    return self;
 }
 
 - (id)copyWithZone:(NSZone *)zone {
@@ -52,6 +57,8 @@
 
 @property (nonatomic, assign) BOOL hasCustomLayer;
 @property (nonatomic, weak) MGLMapView *mapView;
+@property (nonatomic, readwrite) CLLocation *location;
+@property (nonatomic, readwrite) CLHeading *heading;
 
 @end
 

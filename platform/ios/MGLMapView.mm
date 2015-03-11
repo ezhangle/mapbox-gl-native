@@ -1529,6 +1529,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
         for (id <MGLAnnotation> annotation in self.annotations) {
             [self updateAnnotation:annotation];
         }
+        [self updateAnnotationView:self.userLocationAnnotationView];
         
         self.lastCenter = self.centerCoordinate;
         self.lastZoom = self.zoomLevel;
@@ -1536,15 +1537,22 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 }
 
 - (void)updateAnnotation:(id <MGLAnnotation>)annotation {
-    MGLAnnotationView *annotationView = [self viewForAnnotation:annotation];
+    [self updateAnnotationView:[self viewForAnnotation:annotation]];
+}
+
+- (void)updateAnnotationView:(MGLAnnotationView *)annotationView {
     CGPoint center = [self convertCoordinate:annotationView.annotation.coordinate toPointToView:self];
     if (CGRectContainsPoint(self.bounds, center)) {
         annotationView.center = center;
-        [annotationView setHidden:NO];
-        annotationView.calloutView.title = annotation.title;
-        annotationView.calloutView.subtitle = annotation.subtitle;
+        annotationView.hidden = NO;
+        if ([annotationView.annotation respondsToSelector:@selector(title)]) {
+            annotationView.calloutView.title = annotationView.annotation.title;
+        }
+        if ([annotationView.annotation respondsToSelector:@selector(subtitle)]) {
+            annotationView.calloutView.subtitle = annotationView.annotation.subtitle;
+        }
     } else {
-        [annotationView setHidden:YES];
+        annotationView.hidden = YES;
     }
 }
 
@@ -1562,7 +1570,8 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 //        if (_delegateHasWillStartLocatingUser)
 //            [_delegate mapViewWillStartLocatingUser:self];
         
-        self.userLocationAnnotationView = [[MGLUserLocationAnnotationView alloc] init];
+        self.userLocationAnnotationView = [[MGLUserLocationAnnotationView alloc] initWithImage:[[self class] resourceImageNamed:@"Icon"]];
+        self.userLocationAnnotationView.annotation = [[MGLUserLocationAnnotation alloc] init];
         
         _locationManager = [[CLLocationManager alloc] init];
         
@@ -1936,6 +1945,10 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 //    if ( ! [_annotationViews containsObject:self.userLocationAnnotationView])
 //        [self addAnnotation:self.userLocation];
+    if (!self.userLocationAnnotationView.superview) {
+        [self.glView addSubview:self.userLocationAnnotationView];
+    }
+    [self updateAnnotationView:self.userLocationAnnotationView];
 }
 
 - (BOOL)locationManagerShouldDisplayHeadingCalibration:(CLLocationManager *)manager

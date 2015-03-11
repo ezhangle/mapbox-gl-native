@@ -31,10 +31,16 @@
 
 #import <CoreLocation/CoreLocation.h>
 
-@class CLLocation, CLHeading;
+@interface MGLUserLocationAnnotation : NSObject <MGLAnnotation>
+
+@property (nonatomic, readwrite) CLLocationCoordinate2D coordinate;
+
+@end
 
 /** The MGLUserLocationAnnotationView class defines a specific type of annotation that identifies the user’s current location. You do not create instances of this class directly. Instead, you retrieve an existing MGLUserLocationAnnotationView object from the userLocation property of the map view displayed in your application. */
 @interface MGLUserLocationAnnotationView : MGLAnnotationView
+
+@property (nonatomic, strong) MGLUserLocationAnnotation *annotation;
 
 /** @name Determining the User’s Position */
 
@@ -50,12 +56,6 @@
 *
 * This property is `nil` if the user location tracking mode is not `RMUserTrackingModeFollowWithHeading`. */
 @property (nonatomic, readonly) CLHeading *heading;
-
-@end
-
-@interface MGLUserLocationAnnotation : NSObject <MGLAnnotation>
-
-@property (nonatomic, readwrite) CLLocationCoordinate2D coordinate;
 
 @end
 

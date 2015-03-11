@@ -12,6 +12,6 @@
 
 @interface MGLAnnotationView : UIImageView
 
-@property (nonatomic) id <MGLAnnotation> annotation;
+@property (nonatomic, strong) id <MGLAnnotation> annotation;
 
 @end
