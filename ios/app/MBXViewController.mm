@@ -20,10 +20,9 @@ static NSArray *const kStyleNames = @[
 
 static NSString *const kStyleVersion = @"v7";
 
-@interface MBXViewController () <UIActionSheetDelegate, CLLocationManagerDelegate>
+@interface MBXViewController () <UIActionSheetDelegate>
 
 @property (nonatomic) MGLMapView *mapView;
-@property (nonatomic) CLLocationManager *locationManager;
 
 @end
 
@@ -96,8 +95,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     [self restoreState:nil];
 
     [self.mapView setCenterCoordinate:CLLocationCoordinate2DMake(37.776, -122.412) zoomLevel:14.5 animated:NO];
-    self.mapView.userTrackingMode = MGLUserTrackingModeFollowWithHeading;
-    self.mapView.showsUserLocation = YES;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -139,6 +136,8 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
         settings->zoom = self.mapView.zoomLevel;
         settings->bearing = self.mapView.direction;
         settings->debug = self.mapView.isDebugActive;
+        settings->userTrackingMode = self.mapView.userTrackingMode;
+        settings->showsUserLocation = self.mapView.showsUserLocation;
         settings->save();
     }
 }
@@ -149,6 +148,8 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
         settings->load();
         [self.mapView setCenterCoordinate:CLLocationCoordinate2DMake(settings->latitude, settings->longitude) zoomLevel:settings->zoom animated:NO];
         self.mapView.direction = settings->bearing;
+        self.mapView.userTrackingMode = settings->userTrackingMode;
+        self.mapView.showsUserLocation = settings->showsUserLocation;
         [self.mapView setDebugActive:settings->debug];
     }
 }
@@ -216,12 +217,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
 - (void)locateUser
 {
-    if ( ! self.locationManager)
-    {
-        self.locationManager = [CLLocationManager new];
-        self.locationManager.delegate = self;
-    }
-
     if ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusDenied)
     {
         [[[UIAlertView alloc] initWithTitle:@"Authorization Denied"
@@ -231,25 +226,8 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
     }
     else
     {
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 80000
-        if ([CLLocationManager instancesRespondToSelector:@selector(requestWhenInUseAuthorization)])
-        {
-            if ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusAuthorizedWhenInUse)
-            {
-                [self.locationManager startUpdatingLocation];
-            }
-            else
-            {
-                [_locationManager requestWhenInUseAuthorization];
-            }
-        }
-        else
-        {
-            [self.locationManager startUpdatingLocation];
-        }
-#else
-        [self.locationManager startUpdatingLocation];
-#endif
+        self.mapView.userTrackingMode = MGLUserTrackingModeFollowWithHeading;
+        self.mapView.showsUserLocation = YES;
     }
 }
 
@@ -266,46 +244,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
         settings = nullptr;
     }
 }
-
-#pragma mark - Location
-
-- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
-{
-    switch (status)
-    {
-        case kCLAuthorizationStatusAuthorizedAlways:
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 80000
-        case kCLAuthorizationStatusAuthorizedWhenInUse:
-#endif
-        {
-            [manager startUpdatingLocation];
-            break;
-        }
-        default:
-        {
-        }
-    }
-}
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-
-- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray *)locations
-{
-    CLLocation *latestLocation = locations.lastObject;
-
-    if ([latestLocation distanceFromLocation:[[CLLocation alloc] initWithLatitude:self.mapView.centerCoordinate.latitude longitude:self.mapView.centerCoordinate.longitude]] > 100)
-    {
-        [self.mapView setCenterCoordinate:CLLocationCoordinate2DMake(latestLocation.coordinate.latitude, latestLocation.coordinate.longitude) zoomLevel:17 animated:YES];
-    }
-
-    [self.locationManager stopUpdatingLocation];
-    
-    self.mapView.userTrackingMode = MGLUserTrackingModeFollowWithHeading;
-    self.mapView.showsUserLocation = YES;
-}
-
-#pragma clang diagnostic pop
 
 #pragma mark - MGLMapViewDelegate methods
 
