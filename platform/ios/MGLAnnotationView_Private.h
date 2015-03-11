@@ -13,6 +13,6 @@
 @interface MGLAnnotationView (Private)
 
 //! The callout view that pops up when the receiver is selected.
-@property (nonatomic, readonly) SMCalloutView *calloutView;
+@property (nonatomic, strong) SMCalloutView *calloutView;
 
 @end

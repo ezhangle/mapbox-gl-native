@@ -13,11 +13,15 @@
 
 @interface MGLAnnotationView ()
 
-@property (nonatomic, readwrite) SMCalloutView *calloutView;
+@property (nonatomic, strong) SMCalloutView *calloutView;
 
 @end
 
-@implementation MGLAnnotationView
+@implementation MGLAnnotationView {
+    SMCalloutView *_calloutView;
+}
+
+@synthesize calloutView = _calloutView;
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
     if (self = [super initWithCoder:aDecoder]) {
@@ -49,13 +53,22 @@
 
 - (void)commonInit {
     self.userInteractionEnabled = YES;
-    self.calloutView = [SMCalloutView platformCalloutView];
 }
 
 - (void)didMoveToSuperview {
     [super didMoveToSuperview];
     
     [self.superview addSubview:self.calloutView];
+}
+
+- (void)setCalloutView:(SMCalloutView *)calloutView {
+    if (_calloutView) {
+        _calloutView = calloutView;
+        [self.superview addSubview:_calloutView];
+    } else {
+        [_calloutView removeFromSuperview];
+        _calloutView = calloutView;
+    }
 }
 
 @end

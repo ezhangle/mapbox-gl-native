@@ -1504,9 +1504,13 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     if (CGRectContainsPoint(self.bounds, center)) {
         annotationView.center = center;
         [annotationView setHidden:NO];
+        if (!annotationView.calloutView) {
+            annotationView.calloutView = [SMCalloutView platformCalloutView];
+        }
         annotationView.calloutView.title = annotation.title;
         annotationView.calloutView.subtitle = annotation.subtitle;
     } else {
+        annotationView.calloutView = nil;
         [annotationView setHidden:YES];
     }
 }
