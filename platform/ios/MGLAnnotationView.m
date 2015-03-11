@@ -55,16 +55,10 @@
     self.userInteractionEnabled = YES;
 }
 
-- (void)didMoveToSuperview {
-    [super didMoveToSuperview];
-    
-    [self.superview addSubview:self.calloutView];
-}
-
 - (void)setCalloutView:(SMCalloutView *)calloutView {
-    if (_calloutView) {
+    if (calloutView) {
         _calloutView = calloutView;
-        [self.superview addSubview:_calloutView];
+        [self addSubview:_calloutView];
     } else {
         [_calloutView removeFromSuperview];
         _calloutView = calloutView;
