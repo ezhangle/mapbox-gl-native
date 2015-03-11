@@ -9,6 +9,10 @@
 #import "MGLAnnotationView.h"
 #import "MGLAnnotationView_Private.h"
 
+#import <CoreLocation/CoreLocation.h>
+
+#import "MGLAnnotation.h"
+
 #import "../../calloutview/SMCalloutView.h"
 
 @interface MGLAnnotationView ()
@@ -56,13 +60,20 @@
 }
 
 - (void)setCalloutView:(SMCalloutView *)calloutView {
+    // TODO: This is immediate, but we want animation here.
+    [_calloutView removeFromSuperview];
     if (calloutView) {
         _calloutView = calloutView;
+        [self updateCalloutView];
         [self addSubview:_calloutView];
     } else {
-        [_calloutView removeFromSuperview];
         _calloutView = calloutView;
     }
+}
+
+- (void)updateCalloutView {
+    _calloutView.title = self.annotation.title;
+    _calloutView.subtitle = self.annotation.subtitle;
 }
 
 @end

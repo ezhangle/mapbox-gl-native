@@ -555,23 +555,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 #pragma mark - Gestures -
 
-- (void)selectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {
-    self.selectedAnnotation = annotation;
-    MGLAnnotationView *selectedAnnotationView = [self viewForAnnotation:annotation];
-    for (MGLAnnotationView *annotationView in _annotationViews) {
-        if (annotationView != selectedAnnotationView) {
-            [annotationView.calloutView dismissCalloutAnimated:animated];
-        }
-    }
-    [selectedAnnotationView.calloutView presentCalloutFromRect:selectedAnnotationView.bounds inView:selectedAnnotationView constrainedToView:self animated:animated];
-}
-
-- (void)deselectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {
-    MGLAnnotationView *selectedAnnotationView = [self viewForAnnotation:annotation];
-    [selectedAnnotationView.calloutView dismissCalloutAnimated:animated];
-    self.selectedAnnotation = nil;
-}
-
 - (void)handleAnnotationTapGesture:(UITapGestureRecognizer *)tapRecognizer {
     MGLAnnotationView *selectedAnnotationView = (MGLAnnotationView *)tapRecognizer.view;
     NSAssert(!selectedAnnotationView || [selectedAnnotationView isKindOfClass:[MGLAnnotationView class]], @"Tap recognizer %@ should only be added to instances of MGLAnnotationView, not %@", tapRecognizer, [selectedAnnotationView class]);
@@ -1503,16 +1486,36 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     CGPoint center = [self convertCoordinate:annotationView.annotation.coordinate toPointToView:self];
     if (CGRectContainsPoint(self.bounds, center)) {
         annotationView.center = center;
-        [annotationView setHidden:NO];
-        if (!annotationView.calloutView) {
+        if (annotation == _selectedAnnotation && !annotationView.calloutView) {
             annotationView.calloutView = [SMCalloutView platformCalloutView];
         }
-        annotationView.calloutView.title = annotation.title;
-        annotationView.calloutView.subtitle = annotation.subtitle;
+        [annotationView updateCalloutView];
+        [annotationView setHidden:NO];
     } else {
         annotationView.calloutView = nil;
         [annotationView setHidden:YES];
     }
+}
+
+- (void)selectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {
+    self.selectedAnnotation = annotation;
+    MGLAnnotationView *selectedAnnotationView = [self viewForAnnotation:annotation];
+    for (MGLAnnotationView *annotationView in _annotationViews) {
+        if (annotationView != selectedAnnotationView) {
+            [annotationView.calloutView dismissCalloutAnimated:animated];
+        }
+    }
+    
+    selectedAnnotationView.calloutView = [SMCalloutView platformCalloutView];
+    [selectedAnnotationView.calloutView presentCalloutFromRect:selectedAnnotationView.bounds inView:selectedAnnotationView constrainedToView:self animated:animated];
+}
+
+- (void)deselectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {
+    (void)animated;
+    MGLAnnotationView *selectedAnnotationView = [self viewForAnnotation:annotation];
+    [selectedAnnotationView.calloutView dismissCalloutAnimated:animated];
+    selectedAnnotationView.calloutView = nil;
+    self.selectedAnnotation = nil;
 }
 
 #pragma mark - Utility -
