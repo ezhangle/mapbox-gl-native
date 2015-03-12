@@ -1484,8 +1484,12 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 - (void)updateAnnotation:(id <MGLAnnotation>)annotation {
     MGLAnnotationView *annotationView = [self viewForAnnotation:annotation];
     CGPoint center = [self convertCoordinate:annotationView.annotation.coordinate toPointToView:self];
-    if (CGRectContainsPoint(self.bounds, center)) {
+    if (CGRectContainsPoint(CGRectInset(self.bounds, -MGLAnnotationUpdateViewportOutset.width, MGLAnnotationUpdateViewportOutset.height), center)) {
         annotationView.center = center;
+        if ([self.delegate respondsToSelector:@selector(mapView:symbolNameForAnnotation:)]) {
+            NSString *symbolName = [self.delegate mapView:self symbolNameForAnnotation:annotation];
+            annotationView.image = [[self class] resourceImageNamed:symbolName];
+        }
         if (annotation == _selectedAnnotation && !annotationView.calloutView) {
             annotationView.calloutView = [SMCalloutView platformCalloutView];
         }
