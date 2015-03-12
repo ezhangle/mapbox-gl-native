@@ -9,15 +9,23 @@
 #import "MGLAnnotationView.h"
 #import "MGLAnnotationView_Private.h"
 
+#import <CoreLocation/CoreLocation.h>
+
+#import "MGLAnnotation.h"
+
 #import "../../calloutview/SMCalloutView.h"
 
 @interface MGLAnnotationView ()
 
-@property (nonatomic, readwrite) SMCalloutView *calloutView;
+@property (nonatomic, strong) SMCalloutView *calloutView;
 
 @end
 
-@implementation MGLAnnotationView
+@implementation MGLAnnotationView {
+    SMCalloutView *_calloutView;
+}
+
+@synthesize calloutView = _calloutView;
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
     if (self = [super initWithCoder:aDecoder]) {
@@ -49,16 +57,26 @@
 
 - (void)commonInit {
     self.userInteractionEnabled = YES;
-    self.calloutView = [SMCalloutView platformCalloutView];
 }
 
-- (void)didMoveToSuperview {
-    [super didMoveToSuperview];
-    
-    if (self.superview) {
-        [self.superview addSubview:self.calloutView];
+- (void)setCalloutView:(SMCalloutView *)calloutView {
+    // TODO: This is immediate, but we want animation here.
+    [_calloutView removeFromSuperview];
+    if (calloutView) {
+        _calloutView = calloutView;
+        [self updateCalloutView];
+        [self addSubview:_calloutView];
     } else {
-        [self.calloutView removeFromSuperview];
+        _calloutView = calloutView;
+    }
+}
+
+- (void)updateCalloutView {
+    if ([self.annotation respondsToSelector:@selector(title)]) {
+        _calloutView.title = self.annotation.title;
+    }
+    if ([self.annotation respondsToSelector:@selector(subtitle)]) {
+        _calloutView.subtitle = self.annotation.subtitle;
     }
 }
 
