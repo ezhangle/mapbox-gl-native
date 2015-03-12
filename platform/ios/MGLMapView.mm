@@ -82,6 +82,7 @@ extern NSString *const MGLStyleKeyBackground;
 extern NSString *const MGLStyleValueFunctionAllowed;
 
 NSTimeInterval const MGLAnimationDuration = 0.3;
+const CGSize MGLAnnotationUpdateViewportOutset = {150, 150};
 
 #pragma mark - Private -
 
@@ -592,6 +593,9 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 - (void)handleCompassTapGesture:(id)sender
 {
     [self resetNorthAnimated:YES];
+    if (self.userTrackingMode == MGLUserTrackingModeFollowWithHeading) {
+        self.userTrackingMode = MGLUserTrackingModeFollow;
+    }
 }
 
 #pragma clang diagnostic pop
@@ -1512,6 +1516,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
             [self updateAnnotation:annotation];
         }
         [self updateAnnotationView:self.userLocationAnnotationView];
+        [self.userLocationAnnotationView updateTintColor];
         
         self.lastCenter = self.centerCoordinate;
         self.lastZoom = self.zoomLevel;
@@ -1960,40 +1965,8 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
     CLLocationDirection headingDirection = (newHeading.trueHeading > 0 ? newHeading.trueHeading : newHeading.magneticHeading);
 
-    if (headingDirection != 0 && self.userTrackingMode == MGLUserTrackingModeFollowWithHeading)
-    {
-//        if (_userHeadingTrackingView.alpha < 1.0)
-//            [UIView animateWithDuration:0.5 animations:^(void) { _userHeadingTrackingView.alpha = 1.0; }];
-
-//        [CATransaction begin];
-//        [CATransaction setAnimationDuration:0.5];
-//        [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
-//
-//        [UIView animateWithDuration:0.5
-//                              delay:0.0
-//                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationCurveEaseInOut
-//                         animations:^(void)
-//                         {
-//                             CGFloat angle = (M_PI / -180) * headingDirection;
-//
-//                             _mapTransform = CGAffineTransformMakeRotation(angle);
-//                             _annotationTransform = CATransform3DMakeAffineTransform(CGAffineTransformMakeRotation(-angle));
-//
-//                             _mapScrollView.transform = _mapTransform;
-//                             _compassButton.transform = _mapTransform;
-//                             _overlayView.transform   = _mapTransform;
-//
-//                             _compassButton.alpha = 1.0;
-//
-//                             for (RMAnnotation *annotation in _annotations)
-//                                 if ([annotation.layer isKindOfClass:[RMMarker class]])
-//                                     annotation.layer.transform = _annotationTransform;
-//
-//                             [self correctPositionOfAllAnnotations];
-//                         }
-//                         completion:nil];
-//
-//        [CATransaction commit];
+    if (headingDirection > 0 && self.userTrackingMode == MGLUserTrackingModeFollowWithHeading) {
+        mbglMap->setBearing(headingDirection, secondsAsDuration(MGLAnimationDuration));
     }
 }
 
@@ -2051,6 +2024,17 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
             }
         }
     }
+}
+
+- (UIImage *)trackingDotHaloImage
+{
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(100, 100), NO, [[UIScreen mainScreen] scale]);
+    CGContextSetFillColorWithColor(UIGraphicsGetCurrentContext(), [[self.tintColor colorWithAlphaComponent:0.75] CGColor]);
+    CGContextFillEllipseInRect(UIGraphicsGetCurrentContext(), CGRectMake(0, 0, 100, 100));
+    UIImage *finalImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return finalImage;
 }
 
 - (void)selectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {

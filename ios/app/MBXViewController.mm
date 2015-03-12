@@ -93,8 +93,6 @@ mbgl::Settings_NSUserDefaults *settings = nullptr;
 
     settings = new mbgl::Settings_NSUserDefaults();
     [self restoreState:nil];
-
-    [self.mapView setCenterCoordinate:CLLocationCoordinate2DMake(37.776, -122.412) zoomLevel:14.5 animated:NO];
 }
 
 - (void)viewDidAppear:(BOOL)animated

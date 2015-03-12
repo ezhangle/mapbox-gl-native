@@ -55,7 +55,6 @@
 
 @interface MGLUserLocationAnnotationView ()
 
-@property (nonatomic, assign) BOOL hasCustomLayer;
 @property (nonatomic, weak) MGLMapView *mapView;
 @property (nonatomic, readwrite) CLLocation *location;
 @property (nonatomic, readwrite) CLHeading *heading;
@@ -69,7 +68,6 @@
 @synthesize updating = _updating;
 @synthesize location = _location;
 @synthesize heading = _heading;
-@synthesize hasCustomLayer = _hasCustomLayer;
 
 - (MGLUserLocationAnnotation *)annotation {
     return [super annotation];
@@ -85,10 +83,8 @@
     return self.mapView.userTrackingMode != MGLUserTrackingModeNone;
 }
 
-- (void)updateTintColor
-{
-    if ( ! self.hasCustomLayer && CLLocationCoordinate2DIsValid(self.annotation.coordinate))
-    {
+- (void)updateTintColor {
+    if (CLLocationCoordinate2DIsValid(self.annotation.coordinate)) {
         // white dot background with shadow
         //
         CGFloat whiteWidth = 24.0;
