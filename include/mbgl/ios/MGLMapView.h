@@ -1,11 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
 
-typedef NS_ENUM(NSUInteger, MGLUserTrackingMode) {
-    MGLUserTrackingModeNone              = 0,
-    MGLUserTrackingModeFollow            = 1,
-    MGLUserTrackingModeFollowWithHeading = 2
-};
+#import "MGLTypes.h"
 
 @class MGLAnnotationView, MGLUserLocationAnnotationView;
 @protocol MGLMapViewDelegate, MGLAnnotation;

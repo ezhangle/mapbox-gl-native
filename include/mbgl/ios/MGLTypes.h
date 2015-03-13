@@ -15,3 +15,9 @@ extern NSString *const MGLStyleValueTypeFunctionMaximumZoom;
 extern NSString *const MGLStyleValueTypeFunctionLinear;
 extern NSString *const MGLStyleValueTypeFunctionExponential;
 extern NSString *const MGLStyleValueTypeFunctionStops;
+
+typedef NS_ENUM(NSUInteger, MGLUserTrackingMode) {
+    MGLUserTrackingModeNone              = 0,
+    MGLUserTrackingModeFollow            = 1,
+    MGLUserTrackingModeFollowWithHeading = 2
+};

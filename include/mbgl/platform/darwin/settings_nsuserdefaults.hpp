@@ -1,7 +1,7 @@
 #ifndef MBGL_COMMON_SETTINGS_NSUSERDEFAULTS
 #define MBGL_COMMON_SETTINGS_NSUSERDEFAULTS
 
-#import <mbgl/ios/MGLMapView.h>
+#import <mbgl/ios/MGLTypes.h>
 
 namespace mbgl {
 
