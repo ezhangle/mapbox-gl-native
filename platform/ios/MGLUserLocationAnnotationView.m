@@ -30,6 +30,8 @@
 #import "MGLAnnotation.h"
 #import "MGLMapView.h"
 
+const CGFloat MGLTrackingDotRingWidth = 24.0;
+
 @implementation MGLUserLocationAnnotation {
     CLLocationCoordinate2D _coordinate;
 }
@@ -55,8 +57,10 @@
 
 @interface MGLUserLocationAnnotationView ()
 
-@property (nonatomic, readwrite) CLLocation *location;
-@property (nonatomic, readwrite) CLHeading *heading;
+@property (nonatomic, strong, readwrite) CLLocation *location;
+@property (nonatomic, strong, readwrite) CLHeading *heading;
+
+@property (nonatomic, strong, readwrite) CALayer *haloLayer;
 
 @end
 
@@ -65,15 +69,14 @@
 @implementation MGLUserLocationAnnotationView {
     CALayer *_ringLayer;
     CALayer *_dotLayer;
+    UIColor *_tintColor;
 }
-
-@synthesize location = _location;
-@synthesize heading = _heading;
 
 - (instancetype)initInMapView:(MGLMapView *)mapView {
     if (self = [super init]) {
         self.annotation = [[MGLUserLocationAnnotation alloc] init];
         _mapView = mapView;
+        [self setupLayers];
     }
     return self;
 }
@@ -87,22 +90,65 @@
     [super setAnnotation:annotation];
 }
 
-- (void)updateTintColor {
-    const CGFloat whiteWidth = 24.0;
+- (void)setTintColor:(UIColor *)tintColor {
+    [super setTintColor:tintColor];
     
+    UIImage *tintedForeground = [self dotImage];
+    _dotLayer.bounds = CGRectMake(0, 0, tintedForeground.size.width, tintedForeground.size.height);
+    _dotLayer.contents = (__bridge id)[tintedForeground CGImage];
+}
+
+- (void)setupLayers {
     if (CLLocationCoordinate2DIsValid(self.annotation.coordinate)) {
+        if (!_haloLayer) {
+            UIImage *haloImage = [self trackingDotHaloImage];
+            _haloLayer = [CALayer layer];
+            _haloLayer.bounds = CGRectMake(0, 0, haloImage.size.width, haloImage.size.height);
+            _haloLayer.contents = (__bridge id)[haloImage CGImage];
+            _haloLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
+            
+            [CATransaction begin];
+            
+            [CATransaction setAnimationDuration:3.5];
+            [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
+            
+            // scale out radially
+            //
+            CABasicAnimation *boundsAnimation = [CABasicAnimation animationWithKeyPath:@"transform"];
+            boundsAnimation.repeatCount = MAXFLOAT;
+            boundsAnimation.fromValue = [NSValue valueWithCATransform3D:CATransform3DMakeScale(0.1, 0.1, 1.0)];
+            boundsAnimation.toValue   = [NSValue valueWithCATransform3D:CATransform3DMakeScale(2.0, 2.0, 1.0)];
+            boundsAnimation.removedOnCompletion = NO;
+            
+            [_haloLayer addAnimation:boundsAnimation forKey:@"animateScale"];
+            
+            // go transparent as scaled out
+            //
+            CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+            opacityAnimation.repeatCount = MAXFLOAT;
+            opacityAnimation.fromValue = [NSNumber numberWithFloat:1.0];
+            opacityAnimation.toValue   = [NSNumber numberWithFloat:-1.0];
+            opacityAnimation.removedOnCompletion = NO;
+            
+            [_haloLayer addAnimation:opacityAnimation forKey:@"animateOpacity"];
+            
+            [CATransaction commit];
+            
+            [self.layer addSublayer:_haloLayer];
+        }
+        
         // white dot background with shadow
         //
         if (!_ringLayer) {
-            CGRect rect = CGRectMake(0, 0, whiteWidth * 1.25, whiteWidth * 1.25);
+            CGRect rect = CGRectMake(0, 0, MGLTrackingDotRingWidth * 1.25, MGLTrackingDotRingWidth * 1.25);
             
             UIGraphicsBeginImageContextWithOptions(rect.size, NO, [[UIScreen mainScreen] scale]);
             CGContextRef context = UIGraphicsGetCurrentContext();
             
-            CGContextSetShadow(context, CGSizeMake(0, 0), whiteWidth / 4.0);
+            CGContextSetShadow(context, CGSizeMake(0, 0), MGLTrackingDotRingWidth / 4.0);
             
             CGContextSetFillColorWithColor(context, [[UIColor whiteColor] CGColor]);
-            CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - whiteWidth) / 2.0, (rect.size.height - whiteWidth) / 2.0, whiteWidth, whiteWidth));
+            CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - MGLTrackingDotRingWidth) / 2.0, (rect.size.height - MGLTrackingDotRingWidth) / 2.0, MGLTrackingDotRingWidth, MGLTrackingDotRingWidth));
             
             UIImage *whiteBackground = UIGraphicsGetImageFromCurrentImageContext();
             
@@ -112,45 +158,61 @@
             _ringLayer.bounds = CGRectMake(0, 0, whiteBackground.size.width, whiteBackground.size.height);
             _ringLayer.contents = (__bridge id)[whiteBackground CGImage];
             _ringLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
-            [super.layer addSublayer:_ringLayer];
+            [self.layer addSublayer:_ringLayer];
         }
 
         // pulsing, tinted dot sublayer
         //
-        CGFloat tintedWidth = whiteWidth * 0.7;
-
-        CGRect rect = CGRectMake(0, 0, tintedWidth, tintedWidth);
-
-        UIGraphicsBeginImageContextWithOptions(rect.size, NO, [[UIScreen mainScreen] scale]);
-        CGContextRef context = UIGraphicsGetCurrentContext();
-
-        CGContextSetFillColorWithColor(context, [self.mapView.tintColor CGColor]);
-        CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - tintedWidth) / 2.0, (rect.size.height - tintedWidth) / 2.0, tintedWidth, tintedWidth));
-
-        UIImage *tintedForeground = UIGraphicsGetImageFromCurrentImageContext();
-
-        UIGraphicsEndImageContext();
-
-        [_dotLayer removeFromSuperlayer];
-        _dotLayer = [CALayer layer];
-        _dotLayer.bounds = CGRectMake(0, 0, tintedForeground.size.width, tintedForeground.size.height);
-        _dotLayer.contents = (__bridge id)[tintedForeground CGImage];
-        _dotLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
-
-        CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform"];
-        animation.repeatCount = MAXFLOAT;
-        animation.fromValue = [NSValue valueWithCATransform3D:CATransform3DMakeScale(1.0, 1.0, 1.0)];
-        animation.toValue   = [NSValue valueWithCATransform3D:CATransform3DMakeScale(0.8, 0.8, 1.0)];
-        animation.removedOnCompletion = NO;
-        animation.autoreverses = YES;
-        animation.duration = 1.5;
-        animation.beginTime = CACurrentMediaTime() + 1.0;
-        animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
-
-        [_dotLayer addAnimation:animation forKey:@"animateTransform"];
-
-        [super.layer addSublayer:_dotLayer];
+        if (!_dotLayer) {
+            _dotLayer = [CALayer layer];
+            _dotLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
+            
+            self.tintColor = _mapView.tintColor;
+            
+            CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform"];
+            animation.repeatCount = MAXFLOAT;
+            animation.fromValue = [NSValue valueWithCATransform3D:CATransform3DMakeScale(1.0, 1.0, 1.0)];
+            animation.toValue   = [NSValue valueWithCATransform3D:CATransform3DMakeScale(0.8, 0.8, 1.0)];
+            animation.removedOnCompletion = NO;
+            animation.autoreverses = YES;
+            animation.duration = 1.5;
+            animation.beginTime = CACurrentMediaTime() + 1.0;
+            animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+            
+            [_dotLayer addAnimation:animation forKey:@"animateTransform"];
+            
+            [self.layer addSublayer:_dotLayer];
+        }
     }
+}
+
+- (UIImage *)trackingDotHaloImage
+{
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(100, 100), NO, [[UIScreen mainScreen] scale]);
+    CGContextSetFillColorWithColor(UIGraphicsGetCurrentContext(), [[self.tintColor colorWithAlphaComponent:0.75] CGColor]);
+    CGContextFillEllipseInRect(UIGraphicsGetCurrentContext(), CGRectMake(0, 0, 100, 100));
+    UIImage *finalImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return finalImage;
+}
+
+- (UIImage *)dotImage {
+    CGFloat tintedWidth = MGLTrackingDotRingWidth * 0.7;
+    
+    CGRect rect = CGRectMake(0, 0, tintedWidth, tintedWidth);
+    
+    UIGraphicsBeginImageContextWithOptions(rect.size, NO, [[UIScreen mainScreen] scale]);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    
+    CGContextSetFillColorWithColor(context, [self.mapView.tintColor CGColor]);
+    CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - tintedWidth) / 2.0, (rect.size.height - tintedWidth) / 2.0, tintedWidth, tintedWidth));
+    
+    UIImage *tintedForeground = UIGraphicsGetImageFromCurrentImageContext();
+    
+    UIGraphicsEndImageContext();
+    
+    return tintedForeground;
 }
 
 - (void)setLocation:(CLLocation *)newLocation

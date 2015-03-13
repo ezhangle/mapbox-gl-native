@@ -64,10 +64,12 @@
 
 @interface MGLUserLocationAnnotationView (Private)
 
-@property (nonatomic, retain) CLLocation *location;
-@property (nonatomic, retain) CLHeading *heading;
+@property (nonatomic, strong) CLLocation *location;
+@property (nonatomic, strong) CLHeading *heading;
+
+@property (nonatomic, strong, readonly) CALayer *haloLayer;
 
 - (instancetype)initInMapView:(MGLMapView *)mapView;
-- (void)updateTintColor;
+- (void)setupLayers;
 
 @end

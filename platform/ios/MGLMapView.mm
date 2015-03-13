@@ -1526,7 +1526,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
             [self updateAnnotation:annotation];
         }
         [self updateAnnotationView:self.userLocationAnnotationView];
-        [self.userLocationAnnotationView updateTintColor];
+        [self.userLocationAnnotationView setupLayers];
         
         self.lastCenter = self.centerCoordinate;
         self.lastZoom = self.zoomLevel;
@@ -1823,65 +1823,12 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 //
 //    if (newLocation.horizontalAccuracy != oldLocation.horizontalAccuracy)
 //        ((RMCircle *)_accuracyCircleAnnotation.layer).radiusInMeters = newLocation.horizontalAccuracy;
-//
-//    if ( ! _trackingHaloAnnotation)
-//    {
-//        _trackingHaloAnnotation = [RMAnnotation annotationWithMapView:self coordinate:newLocation.coordinate andTitle:nil];
-//        _trackingHaloAnnotation.annotationType = kRMTrackingHaloAnnotationTypeName;
-//        _trackingHaloAnnotation.clusteringEnabled = NO;
-//        _trackingHaloAnnotation.enabled = NO;
-//
-//        // create image marker
-//        //
-//        _trackingHaloAnnotation.layer = [[RMMarker alloc] initWithUIImage:[self trackingDotHaloImage]];
-//        _trackingHaloAnnotation.isUserLocationAnnotation = YES;
-//
-//        [CATransaction begin];
-//
-//        if (RMPreVersion7)
-//        {
-//            [CATransaction setAnimationDuration:2.5];
-//            [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
-//        }
-//        else
-//        {
-//            [CATransaction setAnimationDuration:3.5];
-//            [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
-//        }
-//
-//        // scale out radially
-//        //
-//        CABasicAnimation *boundsAnimation = [CABasicAnimation animationWithKeyPath:@"transform"];
-//        boundsAnimation.repeatCount = MAXFLOAT;
-//        boundsAnimation.fromValue = [NSValue valueWithCATransform3D:CATransform3DMakeScale(0.1, 0.1, 1.0)];
-//        boundsAnimation.toValue   = [NSValue valueWithCATransform3D:CATransform3DMakeScale(2.0, 2.0, 1.0)];
-//        boundsAnimation.removedOnCompletion = NO;
-//
-//        [_trackingHaloAnnotation.layer addAnimation:boundsAnimation forKey:@"animateScale"];
-//
-//        // go transparent as scaled out
-//        //
-//        CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
-//        opacityAnimation.repeatCount = MAXFLOAT;
-//        opacityAnimation.fromValue = [NSNumber numberWithFloat:1.0];
-//        opacityAnimation.toValue   = [NSNumber numberWithFloat:-1.0];
-//        opacityAnimation.removedOnCompletion = NO;
-//
-//        [_trackingHaloAnnotation.layer addAnimation:opacityAnimation forKey:@"animateOpacity"];
-//
-//        [CATransaction commit];
-//
-//        [self addAnnotation:_trackingHaloAnnotation];
-//    }
 
-//    if ([newLocation distanceFromLocation:oldLocation])
-//        _trackingHaloAnnotation.coordinate = newLocation.coordinate;
-
-    self.userLocationAnnotationView.layer.hidden = ( ! CLLocationCoordinate2DIsValid(self.userLocationAnnotationView.annotation.coordinate));
+    self.userLocationAnnotationView.layer.hidden = !CLLocationCoordinate2DIsValid(self.userLocationAnnotationView.annotation.coordinate);
 
 //    _accuracyCircleAnnotation.layer.hidden = newLocation.horizontalAccuracy <= 10 || self.userLocationAnnotationView.hasCustomLayer;
 
-//    _trackingHaloAnnotation.layer.hidden = ( ! CLLocationCoordinate2DIsValid(self.userLocationAnnotationView.annotation.coordinate) || newLocation.horizontalAccuracy > 10 || self.userLocationAnnotationView.hasCustomLayer);
+    _userLocationAnnotationView.haloLayer.hidden = !CLLocationCoordinate2DIsValid(self.userLocationAnnotationView.annotation.coordinate) || newLocation.horizontalAccuracy > 10;
 
 //    if ( ! [_annotationViews containsObject:self.userLocationAnnotationView])
 //        [self addAnnotation:self.userLocation];
@@ -1979,17 +1926,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
             }
         }
     }
-}
-
-- (UIImage *)trackingDotHaloImage
-{
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(100, 100), NO, [[UIScreen mainScreen] scale]);
-    CGContextSetFillColorWithColor(UIGraphicsGetCurrentContext(), [[self.tintColor colorWithAlphaComponent:0.75] CGColor]);
-    CGContextFillEllipseInRect(UIGraphicsGetCurrentContext(), CGRectMake(0, 0, 100, 100));
-    UIImage *finalImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    
-    return finalImage;
 }
 
 - (void)selectAnnotation:(id <MGLAnnotation>)annotation animated:(BOOL)animated {
