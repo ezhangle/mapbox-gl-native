@@ -62,9 +62,11 @@
 
 #pragma mark -
 
-@implementation MGLUserLocationAnnotationView
+@implementation MGLUserLocationAnnotationView {
+    CALayer *_ringLayer;
+    CALayer *_dotLayer;
+}
 
-@synthesize updating = _updating;
 @synthesize location = _location;
 @synthesize heading = _heading;
 
@@ -85,41 +87,42 @@
     [super setAnnotation:annotation];
 }
 
-- (BOOL)isUpdating
-{
-    return self.mapView.userTrackingMode != MGLUserTrackingModeNone;
-}
-
 - (void)updateTintColor {
+    const CGFloat whiteWidth = 24.0;
+    
     if (CLLocationCoordinate2DIsValid(self.annotation.coordinate)) {
         // white dot background with shadow
         //
-        CGFloat whiteWidth = 24.0;
-
-        CGRect rect = CGRectMake(0, 0, whiteWidth * 1.25, whiteWidth * 1.25);
-
-        UIGraphicsBeginImageContextWithOptions(rect.size, NO, [[UIScreen mainScreen] scale]);
-        CGContextRef context = UIGraphicsGetCurrentContext();
-
-        CGContextSetShadow(context, CGSizeMake(0, 0), whiteWidth / 4.0);
-
-        CGContextSetFillColorWithColor(context, [[UIColor whiteColor] CGColor]);
-        CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - whiteWidth) / 2.0, (rect.size.height - whiteWidth) / 2.0, whiteWidth, whiteWidth));
-
-        UIImage *whiteBackground = UIGraphicsGetImageFromCurrentImageContext();
-        
-        UIGraphicsEndImageContext();
-        
-        self.image = whiteBackground;
+        if (!_ringLayer) {
+            CGRect rect = CGRectMake(0, 0, whiteWidth * 1.25, whiteWidth * 1.25);
+            
+            UIGraphicsBeginImageContextWithOptions(rect.size, NO, [[UIScreen mainScreen] scale]);
+            CGContextRef context = UIGraphicsGetCurrentContext();
+            
+            CGContextSetShadow(context, CGSizeMake(0, 0), whiteWidth / 4.0);
+            
+            CGContextSetFillColorWithColor(context, [[UIColor whiteColor] CGColor]);
+            CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - whiteWidth) / 2.0, (rect.size.height - whiteWidth) / 2.0, whiteWidth, whiteWidth));
+            
+            UIImage *whiteBackground = UIGraphicsGetImageFromCurrentImageContext();
+            
+            UIGraphicsEndImageContext();
+            
+            _ringLayer = [CALayer layer];
+            _ringLayer.bounds = CGRectMake(0, 0, whiteBackground.size.width, whiteBackground.size.height);
+            _ringLayer.contents = (__bridge id)[whiteBackground CGImage];
+            _ringLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
+            [super.layer addSublayer:_ringLayer];
+        }
 
         // pulsing, tinted dot sublayer
         //
         CGFloat tintedWidth = whiteWidth * 0.7;
 
-        rect = CGRectMake(0, 0, tintedWidth, tintedWidth);
+        CGRect rect = CGRectMake(0, 0, tintedWidth, tintedWidth);
 
         UIGraphicsBeginImageContextWithOptions(rect.size, NO, [[UIScreen mainScreen] scale]);
-        context = UIGraphicsGetCurrentContext();
+        CGContextRef context = UIGraphicsGetCurrentContext();
 
         CGContextSetFillColorWithColor(context, [self.mapView.tintColor CGColor]);
         CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - tintedWidth) / 2.0, (rect.size.height - tintedWidth) / 2.0, tintedWidth, tintedWidth));
@@ -128,10 +131,11 @@
 
         UIGraphicsEndImageContext();
 
-        CALayer *dotLayer = [CALayer layer];
-        dotLayer.bounds = CGRectMake(0, 0, tintedForeground.size.width, tintedForeground.size.height);
-        dotLayer.contents = (id)[tintedForeground CGImage];
-        dotLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
+        [_dotLayer removeFromSuperlayer];
+        _dotLayer = [CALayer layer];
+        _dotLayer.bounds = CGRectMake(0, 0, tintedForeground.size.width, tintedForeground.size.height);
+        _dotLayer.contents = (__bridge id)[tintedForeground CGImage];
+        _dotLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
 
         CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform"];
         animation.repeatCount = MAXFLOAT;
@@ -143,9 +147,9 @@
         animation.beginTime = CACurrentMediaTime() + 1.0;
         animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
 
-        [dotLayer addAnimation:animation forKey:@"animateTransform"];
+        [_dotLayer addAnimation:animation forKey:@"animateTransform"];
 
-        [super.layer addSublayer:dotLayer];
+        [super.layer addSublayer:_dotLayer];
     }
 }
 

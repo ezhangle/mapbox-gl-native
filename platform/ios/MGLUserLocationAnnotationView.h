@@ -64,7 +64,6 @@
 
 @interface MGLUserLocationAnnotationView (Private)
 
-@property (nonatomic, getter=isUpdating) BOOL updating;
 @property (nonatomic, retain) CLLocation *location;
 @property (nonatomic, retain) CLHeading *heading;
 
