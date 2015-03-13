@@ -31,7 +31,7 @@ class VectorTileData : public TileData {
 
 public:
     VectorTileData(Tile::ID const &, float mapMaxZoom, util::ptr<Style>, GlyphAtlas &, GlyphStore &,
-                   SpriteAtlas &, util::ptr<Sprite>, const SourceInfo &, Environment &);
+                   SpriteAtlas &, util::ptr<Sprite>, const SourceInfo &);
     ~VectorTileData();
 
     void parse() override;

@@ -20,6 +20,7 @@ enum class ThreadType : uint8_t {
     Unknown    = 0,
     Main       = 1 << 0,
     Map        = 1 << 1,
+    TileWorker = 1 << 2,
 };
 
 class Environment final : private util::noncopyable {

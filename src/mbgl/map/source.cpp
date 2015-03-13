@@ -154,7 +154,7 @@ TileData::State Source::hasTile(const Tile::ID& id) {
     return TileData::State::invalid;
 }
 
-TileData::State Source::addTile(Map &map, Environment &env, uv::worker &worker,
+TileData::State Source::addTile(Map &map, uv::worker &worker,
                                 util::ptr<Style> style, GlyphAtlas &glyphAtlas,
                                 GlyphStore &glyphStore, SpriteAtlas &spriteAtlas,
                                 util::ptr<Sprite> sprite, TexturePool &texturePool,
@@ -188,10 +188,9 @@ TileData::State Source::addTile(Map &map, Environment &env, uv::worker &worker,
         if (info.type == SourceType::Vector) {
             new_tile.data = std::make_shared<VectorTileData>(normalized_id, map.getMaxZoom(), style,
                                                              glyphAtlas, glyphStore,
-                                                             spriteAtlas, sprite,
-                                                             info, env);
+                                                             spriteAtlas, sprite, info);
         } else if (info.type == SourceType::Raster) {
-            new_tile.data = std::make_shared<RasterTileData>(normalized_id, texturePool, info, env);
+            new_tile.data = std::make_shared<RasterTileData>(normalized_id, texturePool, info);
         } else {
             throw std::runtime_error("source type not implemented");
         }
@@ -283,7 +282,6 @@ bool Source::findLoadedParent(const Tile::ID& id, int32_t minCoveringZoom, std::
 }
 
 void Source::update(Map &map,
-                    Environment &env,
                     uv::worker &worker,
                     util::ptr<Style> style,
                     GlyphAtlas &glyphAtlas,
@@ -312,7 +310,7 @@ void Source::update(Map &map,
 
     // Add existing child/parent tiles if the actual tile is not yet loaded
     for (const Tile::ID& id : required) {
-        const TileData::State state = addTile(map, env, worker, style, glyphAtlas, glyphStore,
+        const TileData::State state = addTile(map, worker, style, glyphAtlas, glyphStore,
                                               spriteAtlas, sprite, texturePool, id, callback);
 
         if (state != TileData::State::parsed) {
