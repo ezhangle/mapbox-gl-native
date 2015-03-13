@@ -1777,23 +1777,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
         }
     }
 
-//    if ( ! _accuracyCircleAnnotation)
-//    {
-//        _accuracyCircleAnnotation = [RMAnnotation annotationWithMapView:self coordinate:newLocation.coordinate andTitle:nil];
-//        _accuracyCircleAnnotation.annotationType = kRMAccuracyCircleAnnotationTypeName;
-//        _accuracyCircleAnnotation.clusteringEnabled = NO;
-//        _accuracyCircleAnnotation.enabled = NO;
-//        _accuracyCircleAnnotation.layer = [[RMCircle alloc] initWithView:self radiusInMeters:newLocation.horizontalAccuracy];
-//        _accuracyCircleAnnotation.isUserLocationAnnotation = YES;
-//
-//        ((RMCircle *)_accuracyCircleAnnotation.layer).lineColor = (RMPreVersion7 ? [UIColor colorWithRed:0.378 green:0.552 blue:0.827 alpha:0.7] : [UIColor clearColor]);
-//        ((RMCircle *)_accuracyCircleAnnotation.layer).fillColor = (RMPreVersion7 ? [UIColor colorWithRed:0.378 green:0.552 blue:0.827 alpha:0.15] : [self.tintColor colorWithAlphaComponent:0.1]);
-//
-//        ((RMCircle *)_accuracyCircleAnnotation.layer).lineWidthInPixels = 2.0;
-//
-//        [self addAnnotation:_accuracyCircleAnnotation];
-//    }
-
     if ( ! oldLocation)
     {
         // make accuracy circle bounce until we get our second update

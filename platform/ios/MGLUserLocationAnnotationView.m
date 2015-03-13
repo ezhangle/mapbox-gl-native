@@ -67,7 +67,8 @@ const CGFloat MGLTrackingDotRingWidth = 24.0;
 #pragma mark -
 
 @implementation MGLUserLocationAnnotationView {
-    CALayer *_ringLayer;
+    CALayer *_accuracyRingLayer;
+    CALayer *_dotBorderLayer;
     CALayer *_dotLayer;
     UIColor *_tintColor;
 }
@@ -100,6 +101,16 @@ const CGFloat MGLTrackingDotRingWidth = 24.0;
 
 - (void)setupLayers {
     if (CLLocationCoordinate2DIsValid(self.annotation.coordinate)) {
+        if (!_accuracyRingLayer && _location.horizontalAccuracy) {
+            UIImage *accuracyRingImage = [self accuracyRingImage];
+            _accuracyRingLayer = [CALayer layer];
+            _haloLayer.bounds = CGRectMake(0, 0, accuracyRingImage.size.width, accuracyRingImage.size.height);
+            _haloLayer.contents = (__bridge id)[accuracyRingImage CGImage];
+            _haloLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
+            
+            [self.layer addSublayer:_accuracyRingLayer];
+        }
+        
         if (!_haloLayer) {
             UIImage *haloImage = [self trackingDotHaloImage];
             _haloLayer = [CALayer layer];
@@ -139,7 +150,7 @@ const CGFloat MGLTrackingDotRingWidth = 24.0;
         
         // white dot background with shadow
         //
-        if (!_ringLayer) {
+        if (!_dotBorderLayer) {
             CGRect rect = CGRectMake(0, 0, MGLTrackingDotRingWidth * 1.25, MGLTrackingDotRingWidth * 1.25);
             
             UIGraphicsBeginImageContextWithOptions(rect.size, NO, [[UIScreen mainScreen] scale]);
@@ -154,11 +165,11 @@ const CGFloat MGLTrackingDotRingWidth = 24.0;
             
             UIGraphicsEndImageContext();
             
-            _ringLayer = [CALayer layer];
-            _ringLayer.bounds = CGRectMake(0, 0, whiteBackground.size.width, whiteBackground.size.height);
-            _ringLayer.contents = (__bridge id)[whiteBackground CGImage];
-            _ringLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
-            [self.layer addSublayer:_ringLayer];
+            _dotBorderLayer = [CALayer layer];
+            _dotBorderLayer.bounds = CGRectMake(0, 0, whiteBackground.size.width, whiteBackground.size.height);
+            _dotBorderLayer.contents = (__bridge id)[whiteBackground CGImage];
+            _dotBorderLayer.position = CGPointMake(super.layer.bounds.size.width / 2.0, super.layer.bounds.size.height / 2.0);
+            [self.layer addSublayer:_dotBorderLayer];
         }
 
         // pulsing, tinted dot sublayer
@@ -184,6 +195,21 @@ const CGFloat MGLTrackingDotRingWidth = 24.0;
             [self.layer addSublayer:_dotLayer];
         }
     }
+}
+
+- (UIImage *)accuracyRingImage {
+    CGFloat latRadians = self.annotation.coordinate.latitude * M_PI / 180.0f;
+    CGFloat pixelRadius = _location.horizontalAccuracy / cos(latRadians) / [self.mapView metersPerPixelAtLatitude:self.annotation.coordinate.latitude];
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(pixelRadius * 2, pixelRadius * 2), NO, [[UIScreen mainScreen] scale]);
+    
+    CGContextSetStrokeColorWithColor(UIGraphicsGetCurrentContext(), [[UIColor colorWithRed:0.378 green:0.552 blue:0.827 alpha:0.7] CGColor]);
+    CGContextSetFillColorWithColor(UIGraphicsGetCurrentContext(), [[UIColor colorWithRed:0.378 green:0.552 blue:0.827 alpha:0.15] CGColor]);
+    CGContextSetLineWidth(UIGraphicsGetCurrentContext(), 2.0);
+    CGContextStrokeEllipseInRect(UIGraphicsGetCurrentContext(), CGRectMake(0, 0, pixelRadius * 2, pixelRadius * 2));
+    
+    UIImage *finalImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return finalImage;
 }
 
 - (UIImage *)trackingDotHaloImage
@@ -223,6 +249,7 @@ const CGFloat MGLTrackingDotRingWidth = 24.0;
         _location = newLocation;
         MGLUserLocationAnnotation *annotation = self.annotation;
         annotation.coordinate = _location.coordinate;
+        [self setupLayers];
         [self didChangeValueForKey:@"location"];
     }
 }
