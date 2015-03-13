@@ -56,6 +56,7 @@ extern NSString *const MGLStyleKeyBackground;
 extern NSString *const MGLStyleValueFunctionAllowed;
 
 NSTimeInterval const MGLAnimationDuration = 0.3;
+const CGSize MGLAnnotationUpdateViewportOutset = {150, 150};
 
 #pragma mark - Private -
 
