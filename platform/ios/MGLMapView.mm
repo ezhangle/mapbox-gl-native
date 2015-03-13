@@ -916,7 +916,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     CGFloat duration = (animated ? MGLAnimationDuration : 0);
 
     mbglMap->setLatLngZoom(mbgl::LatLng(centerCoordinate.latitude, centerCoordinate.longitude), zoomLevel, secondsAsDuration(duration));
-    self.userTrackingMode = MGLUserTrackingModeNone;
 
     [self unrotateIfNeededAnimated:animated];
 }
@@ -931,7 +930,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     CGFloat duration = (animated ? MGLAnimationDuration : 0);
 
     mbglMap->setZoom(zoomLevel, secondsAsDuration(duration));
-    self.userTrackingMode = MGLUserTrackingModeNone;
 
     [self unrotateIfNeededAnimated:animated];
 }
@@ -939,6 +937,19 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 - (void)setZoomLevel:(double)zoomLevel
 {
     [self setZoomLevel:zoomLevel animated:NO];
+}
+
+- (void)zoomToSouthWestCoordinate:(CLLocationCoordinate2D)southWestCoordinate northEastCoordinate:(CLLocationCoordinate2D)northEastCoordinate animated:(BOOL)animated {
+    CLLocationCoordinate2D center = CLLocationCoordinate2DMake((northEastCoordinate.latitude + southWestCoordinate.latitude) / 2, (northEastCoordinate.longitude + southWestCoordinate.longitude) / 2);
+    
+    CGFloat scale = mbglMap->getScale();
+    CGFloat scaleX = mbglMap->getState().getWidth() / (northEastCoordinate.longitude - southWestCoordinate.longitude);
+    CGFloat scaleY = mbglMap->getState().getHeight() / (northEastCoordinate.latitude - southWestCoordinate.latitude);
+    CGFloat minZoom = mbglMap->getMinZoom();
+    CGFloat maxZoom = mbglMap->getMaxZoom();
+    CGFloat zoomLevel = MAX(MIN(log(scale * MIN(scaleX, scaleY)) / log(2), maxZoom), minZoom);
+    
+    [self setCenterCoordinate:center zoomLevel:zoomLevel animated:animated];
 }
 
 - (CLLocationDirection)direction
@@ -1637,32 +1648,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
         {
             [_locationManager stopUpdatingHeading];
 
-//            [CATransaction setAnimationDuration:0.5];
-//            [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
-//
             (void)animated;
-//            [UIView animateWithDuration:(animated ? 0.5 : 0.0)
-//                                  delay:0.0
-//                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationCurveEaseInOut
-//                             animations:^(void)
-//                             {
-//                                 _mapTransform = CGAffineTransformIdentity;
-//                                 _annotationTransform = CATransform3DIdentity;
-//
-//                                 _mapScrollView.transform = _mapTransform;
-//                                 _compassButton.transform = _mapTransform;
-//                                 _overlayView.transform   = _mapTransform;
-//
-//                                 _compassButton.alpha = 0;
-//
-//                                 for (RMAnnotation *annotation in _annotations)
-//                                     if ([annotation.layer isKindOfClass:[RMMarker class]])
-//                                         annotation.layer.transform = _annotationTransform;
-//                             }
-//                             completion:nil];
-//
-//            [CATransaction commit];
-//
 //            if (_userHeadingTrackingView)
 //                [_userHeadingTrackingView removeFromSuperview]; _userHeadingTrackingView = nil;
 
@@ -1682,31 +1668,6 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 //            if (_userHeadingTrackingView)
 //                [_userHeadingTrackingView removeFromSuperview]; _userHeadingTrackingView = nil;
-
-//            [CATransaction setAnimationDuration:0.5];
-//            [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
-//
-//            [UIView animateWithDuration:(animated ? 0.5 : 0.0)
-//                                  delay:0.0
-//                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationCurveEaseInOut
-//                             animations:^(void)
-//                             {
-//                                 _mapTransform = CGAffineTransformIdentity;
-//                                 _annotationTransform = CATransform3DIdentity;
-//
-//                                 _mapScrollView.transform = _mapTransform;
-//                                 _compassButton.transform = _mapTransform;
-//                                 _overlayView.transform   = _mapTransform;
-//
-//                                 _compassButton.alpha = 0;
-//
-//                                 for (RMAnnotation *annotation in _annotations)
-//                                     if ([annotation.layer isKindOfClass:[RMMarker class]])
-//                                         annotation.layer.transform = _annotationTransform;
-//                             }
-//                             completion:nil];
-//
-//            [CATransaction commit];
 
             break;
         }
@@ -1805,17 +1766,13 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
                 CLLocationCoordinate2D actualSouthWest = [self convertPoint:CGPointMake(userLocationPoint.x - pixelRadius, userLocationPoint.y - pixelRadius) toCoordinateFromView:self];
                 CLLocationCoordinate2D actualNorthEast = [self convertPoint:CGPointMake(userLocationPoint.x + pixelRadius, userLocationPoint.y + pixelRadius) toCoordinateFromView:self];
-
+                
                 if (desiredNorthEast.latitude  != actualNorthEast.latitude  ||
                     desiredNorthEast.longitude != actualNorthEast.longitude ||
                     desiredSouthWest.latitude  != actualSouthWest.latitude  ||
                     desiredSouthWest.longitude != actualSouthWest.longitude)
                 {
-                    // FIXME: Is this right? -zoomWithLatitudeLongitudeBoundsSouthWest:northEast:animated: in the SDK is a lot more sophisticated.
-                    CLLocationCoordinate2D center = CLLocationCoordinate2DMake((desiredNorthEast.latitude - desiredSouthWest.latitude) / 2, (desiredNorthEast.longitude - desiredSouthWest.longitude) / 2);
-                    // FIXME: No idea what to put in here.
-                    double zoomLevel = self.zoomLevel;
-                    [self setCenterCoordinate:center zoomLevel:zoomLevel animated:YES];
+                    [self zoomToSouthWestCoordinate:desiredSouthWest northEastCoordinate:desiredNorthEast animated:YES];
                 }
             }
         }
