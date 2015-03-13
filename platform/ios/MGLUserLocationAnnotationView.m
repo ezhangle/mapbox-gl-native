@@ -55,7 +55,6 @@
 
 @interface MGLUserLocationAnnotationView ()
 
-@property (nonatomic, weak) MGLMapView *mapView;
 @property (nonatomic, readwrite) CLLocation *location;
 @property (nonatomic, readwrite) CLHeading *heading;
 
@@ -68,6 +67,14 @@
 @synthesize updating = _updating;
 @synthesize location = _location;
 @synthesize heading = _heading;
+
+- (instancetype)initInMapView:(MGLMapView *)mapView {
+    if (self = [super init]) {
+        self.annotation = [[MGLUserLocationAnnotation alloc] init];
+        _mapView = mapView;
+    }
+    return self;
+}
 
 - (MGLUserLocationAnnotation *)annotation {
     return [super annotation];
@@ -100,8 +107,10 @@
         CGContextFillEllipseInRect(context, CGRectMake((rect.size.width - whiteWidth) / 2.0, (rect.size.height - whiteWidth) / 2.0, whiteWidth, whiteWidth));
 
         UIImage *whiteBackground = UIGraphicsGetImageFromCurrentImageContext();
-
+        
         UIGraphicsEndImageContext();
+        
+        self.image = whiteBackground;
 
         // pulsing, tinted dot sublayer
         //

@@ -1565,8 +1565,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 //        if (_delegateHasWillStartLocatingUser)
 //            [_delegate mapViewWillStartLocatingUser:self];
         
-        self.userLocationAnnotationView = [[MGLUserLocationAnnotationView alloc] init];
-        self.userLocationAnnotationView.annotation = [[MGLUserLocationAnnotation alloc] init];
+        self.userLocationAnnotationView = [[MGLUserLocationAnnotationView alloc] initInMapView:self];
         
         _locationManager = [[CLLocationManager alloc] init];
         

@@ -31,6 +31,8 @@
 
 #import <CoreLocation/CoreLocation.h>
 
+@class MGLMapView;
+
 @interface MGLUserLocationAnnotation : NSObject <MGLAnnotation>
 
 @property (nonatomic, readwrite) CLLocationCoordinate2D coordinate;
@@ -40,6 +42,7 @@
 /** The MGLUserLocationAnnotationView class defines a specific type of annotation that identifies the user’s current location. You do not create instances of this class directly. Instead, you retrieve an existing MGLUserLocationAnnotationView object from the userLocation property of the map view displayed in your application. */
 @interface MGLUserLocationAnnotationView : MGLAnnotationView
 
+@property (nonatomic, weak) MGLMapView *mapView;
 @property (nonatomic, strong) MGLUserLocationAnnotation *annotation;
 
 /** @name Determining the User’s Position */
@@ -65,6 +68,7 @@
 @property (nonatomic, retain) CLLocation *location;
 @property (nonatomic, retain) CLHeading *heading;
 
+- (instancetype)initInMapView:(MGLMapView *)mapView;
 - (void)updateTintColor;
 
 @end
