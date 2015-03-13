@@ -61,8 +61,6 @@ using namespace mbgl;
 Map::Map(View& view_, FileSource& fileSource_)
     : env(util::make_unique<Environment>(fileSource_)),
       view(view_),
-      mainThread(std::this_thread::get_id()),
-      mapThread(mainThread),
       transform(view_),
       fileSource(fileSource_),
       glyphAtlas(util::make_unique<GlyphAtlas>(1024, 1024)),
@@ -97,7 +95,7 @@ uv::worker &Map::getWorker() {
 }
 
 void Map::start(bool startPaused) {
-    assert(std::this_thread::get_id() == mainThread);
+    assert(Environment::currentlyOn(ThreadType::Main));
     assert(mode == Mode::None);
 
     // When starting map rendering in another thread, we perform async/continuously
@@ -109,7 +107,7 @@ void Map::start(bool startPaused) {
 
     // Setup async notifications
     asyncTerminate = util::make_unique<uv::async>(env->loop, [this]() {
-        assert(std::this_thread::get_id() == mapThread);
+        assert(Environment::currentlyOn(ThreadType::Map));
 
         // Remove all of these to make sure they are destructed in the correct thread.
         style.reset();
@@ -125,7 +123,7 @@ void Map::start(bool startPaused) {
     });
 
     asyncUpdate = util::make_unique<uv::async>(env->loop, [this] {
-        assert(std::this_thread::get_id() == mapThread);
+        assert(Environment::currentlyOn(ThreadType::Map));
 
         if (state.hasSize()) {
             prepare();
@@ -134,7 +132,7 @@ void Map::start(bool startPaused) {
 
     asyncRender = util::make_unique<uv::async>(env->loop, [this] {
         // Must be called in Map thread.
-        assert(std::this_thread::get_id() == mapThread);
+        assert(Environment::currentlyOn(ThreadType::Map));
 
         render();
 
@@ -152,19 +150,11 @@ void Map::start(bool startPaused) {
     }
 
     thread = std::thread([this]() {
-#ifdef DEBUG
-        mapThread = std::this_thread::get_id();
-#endif
-
 #ifdef __APPLE__
         pthread_setname_np("Map");
 #endif
 
         run();
-
-#ifdef DEBUG
-        mapThread = std::thread::id();
-#endif
 
         // Make sure that the stop() function knows when to stop invoking the callback function.
         isStopped = true;
@@ -173,8 +163,7 @@ void Map::start(bool startPaused) {
 }
 
 void Map::stop(std::function<void ()> callback) {
-    assert(std::this_thread::get_id() == mainThread);
-    assert(mainThread != mapThread);
+    assert(Environment::currentlyOn(ThreadType::Main));
     assert(mode == Mode::Continuous);
 
     asyncTerminate->send();
@@ -201,7 +190,7 @@ void Map::stop(std::function<void ()> callback) {
 }
 
 void Map::pause(bool waitForPause) {
-    assert(std::this_thread::get_id() == mainThread);
+    assert(Environment::currentlyOn(ThreadType::Main));
     assert(mode == Mode::Continuous);
     mutexRun.lock();
     pausing = true;
@@ -219,7 +208,7 @@ void Map::pause(bool waitForPause) {
 }
 
 void Map::resume() {
-    assert(std::this_thread::get_id() == mainThread);
+    assert(Environment::currentlyOn(ThreadType::Main));
     assert(mode == Mode::Continuous);
 
     mutexRun.lock();
@@ -229,13 +218,20 @@ void Map::resume() {
 }
 
 void Map::run() {
+    ThreadType threadType = ThreadType::Map;
+    std::string threadName("Map");
+
     if (mode == Mode::None) {
-#ifdef DEBUG
-        mapThread = mainThread;
-#endif
         mode = Mode::Static;
+
+        // FIXME: Threads should have only one purpose. When running on Static mode,
+        // we are currently not spawning a Map thread and running the code on the
+        // Main thread, thus, the Main thread in this case is both Main and Map thread.
+        threadType = static_cast<ThreadType>(static_cast<uint8_t>(threadType) | static_cast<uint8_t>(ThreadType::Main));
+        threadName += "andMain";
     }
-    assert(std::this_thread::get_id() == mapThread);
+
+    Environment::Scope scope(*env, threadType, threadName);
 
     if (mode == Mode::Continuous) {
         checkForPause();
@@ -248,8 +244,6 @@ void Map::run() {
     view.activate();
 
     workers = util::make_unique<uv::worker>(env->loop, 4, "Tile Worker");
-
-    env->setup();
 
     setup();
     prepare();
@@ -271,9 +265,6 @@ void Map::run() {
     // *after* all events have been processed.
     if (mode == Mode::Static) {
         render();
-#ifdef DEBUG
-        mapThread = std::thread::id();
-#endif
         mode = Mode::None;
     }
 
@@ -282,7 +273,7 @@ void Map::run() {
 
 void Map::renderSync() {
     // Must be called in UI thread.
-    assert(std::this_thread::get_id() == mainThread);
+    assert(Environment::currentlyOn(ThreadType::Main));
 
     triggerRender();
 
@@ -333,7 +324,7 @@ void Map::terminate() {
 #pragma mark - Setup
 
 void Map::setup() {
-    assert(std::this_thread::get_id() == mapThread);
+    assert(Environment::currentlyOn(ThreadType::Map));
     assert(painter);
     painter->setup();
 }
@@ -605,7 +596,7 @@ std::chrono::steady_clock::duration Map::getDefaultTransitionDuration() {
 }
 
 void Map::updateSources() {
-    assert(std::this_thread::get_id() == mapThread);
+    assert(Environment::currentlyOn(ThreadType::Map));
 
     // First, disable all existing sources.
     for (const auto& source : activeSources) {
@@ -634,7 +625,7 @@ void Map::updateSources() {
 }
 
 void Map::updateSources(const util::ptr<StyleLayerGroup> &group) {
-    assert(std::this_thread::get_id() == mapThread);
+    assert(Environment::currentlyOn(ThreadType::Map));
     if (!group) {
         return;
     }
@@ -647,18 +638,18 @@ void Map::updateSources(const util::ptr<StyleLayerGroup> &group) {
 }
 
 void Map::updateTiles() {
-    assert(std::this_thread::get_id() == mapThread);
+    assert(Environment::currentlyOn(ThreadType::Map));
     for (const auto &source : activeSources) {
         source->source->update(*this, *env, getWorker(), style, *glyphAtlas, *glyphStore,
                                *spriteAtlas, getSprite(), *texturePool, [this]() {
-            assert(std::this_thread::get_id() == mapThread);
+            assert(Environment::currentlyOn(ThreadType::Map));
             triggerUpdate();
         });
     }
 }
 
 void Map::prepare() {
-    assert(std::this_thread::get_id() == mapThread);
+    assert(Environment::currentlyOn(ThreadType::Map));
 
     if (!style) {
         style = std::make_shared<Style>();
@@ -703,7 +694,7 @@ void Map::prepare() {
 }
 
 void Map::render() {
-    assert(std::this_thread::get_id() == mapThread);
+    assert(Environment::currentlyOn(ThreadType::Map));
     assert(painter);
     painter->render(*style, activeSources,
                     state, animationTime);
