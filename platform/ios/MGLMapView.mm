@@ -133,6 +133,19 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     return self;
 }
 
+- (instancetype)initWithFrame:(CGRect)frame bundledStyleNamed:(NSString *)styleName accessToken:(NSString *)accessToken
+{
+    self = [super initWithFrame:frame];
+    
+    if (self && [self commonInit])
+    {
+        if (accessToken) [self setAccessToken:accessToken];
+        if (styleName) [self useBundledStyleNamed:styleName];
+    }
+    
+    return self;
+}
+
 - (instancetype)initWithFrame:(CGRect)frame accessToken:(NSString *)accessToken
 {
     return [self initWithFrame:frame styleJSON:nil accessToken:accessToken];

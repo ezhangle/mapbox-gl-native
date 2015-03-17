@@ -21,6 +21,13 @@
 *   @return An initialized map view, or `nil` if the map view was unable to be initialized. */
 - (instancetype)initWithFrame:(CGRect)frame styleJSON:(NSString *)styleJSON accessToken:(NSString *)accessToken;
 
+/** Initialize a map view with a given frame, bundled style name, and access token.
+*   @param frame The frame with which to initialize the map view.
+*   @param styleName The map style name to use.
+*   @param accessToken A Mapbox API access token.
+*   @return An initialized map view, or `nil` if the map view was unable to be initialized. */
+- (instancetype)initWithFrame:(CGRect)frame bundledStyleNamed:(NSString *)styleName accessToken:(NSString *)accessToken;
+
 /** Initialize a map view with a given frame, the default style, and an access token.
 *   @param frame The frame with which to initialize the map view.
 *   @param accessToken A Mapbox API access token.
