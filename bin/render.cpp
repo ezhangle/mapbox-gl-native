@@ -5,16 +5,18 @@
 
 #include <mbgl/platform/default/headless_view.hpp>
 #include <mbgl/platform/default/headless_display.hpp>
+#include <mbgl/platform/log.hpp>
 #include <mbgl/storage/default_file_source.hpp>
 #include <mbgl/storage/default/sqlite_cache.hpp>
 
-#if __APPLE__
-#include <mbgl/platform/darwin/log_nslog.hpp>
-#else
-#include <mbgl/platform/default/log_stderr.hpp>
+#pragma GCC diagnostic push
+#ifndef __clang__
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+#pragma GCC diagnostic ignored "-Wshadow"
 #endif
-
 #include <boost/program_options.hpp>
+#pragma GCC diagnostic pop
+
 namespace po = boost::program_options;
 
 #include <cassert>
@@ -64,13 +66,6 @@ int main(int argc, char *argv[]) {
 
     using namespace mbgl;
 
-
-#if __APPLE__
-    Log::Set<NSLogBackend>();
-#else
-    Log::Set<StderrLogBackend>();
-#endif
-
     mbgl::SQLiteCache cache(cache_file);
     mbgl::DefaultFileSource fileSource(&cache);
 
@@ -95,7 +90,6 @@ int main(int argc, char *argv[]) {
     map.setClasses(classes);
 
     view.resize(width, height, pixelRatio);
-    map.resize(width, height, pixelRatio);
     map.setLatLngZoom({ lat, lon }, zoom);
     map.setBearing(bearing);
 

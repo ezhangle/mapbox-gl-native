@@ -37,6 +37,9 @@ class GlyphAtlas;
 class SpriteAtlas;
 class LineAtlas;
 class Environment;
+class AnnotationManager;
+
+typedef std::vector<LatLng> AnnotationSegment;
 
 class Map : private util::noncopyable {
     friend class View;
@@ -65,18 +68,21 @@ public:
     // frame is completely rendered.
     void run();
 
-    // Triggers a lazy rerender: only performs a render when the map is not clean.
-    void rerender();
+    // Triggers a synchronous or asynchronous render.
+    void renderSync();
 
-    // Forces a map update: always triggers a rerender.
-    void update();
+    // Unconditionally performs a render with the current map state. May only be called from the Map
+    // thread.
+    void render();
+
+    // Notifies the Map thread that the state has changed and an update might be necessary.
+    void triggerUpdate();
+
+    // Triggers a render. Can be called from any thread.
+    void triggerRender();
 
     // Releases resources immediately
     void terminate();
-
-    // Controls buffer swapping.
-    bool needsSwap();
-    void swapped();
 
     // Styling
     void addClass(const std::string&);
@@ -137,6 +143,15 @@ public:
     inline const vec2<double> pixelForLatLng(const LatLng latLng) const { return state.pixelForLatLng(latLng); }
     inline const LatLng latLngForPixel(const vec2<double> pixel) const { return state.latLngForPixel(pixel); }
 
+    // Annotations
+    void setDefaultPointAnnotationSymbol(std::string&);
+    uint32_t addPointAnnotation(LatLng, std::string& symbol);
+    std::vector<uint32_t> addPointAnnotations(std::vector<LatLng>, std::vector<std::string>& symbols);
+    void removeAnnotation(uint32_t);
+    void removeAnnotations(std::vector<uint32_t>);
+    std::vector<uint32_t> getAnnotationsInBoundingBox(BoundingBox) const;
+    BoundingBox getBoundingBoxForAnnotations(std::vector<uint32_t>) const;
+
     // Debug
     void setDebug(bool value);
     void toggleDebug();
@@ -144,6 +159,7 @@ public:
 
     inline const TransformState &getState() const { return state; }
     inline std::chrono::steady_clock::time_point getTime() const { return animationTime; }
+    inline util::ptr<AnnotationManager> getAnnotationManager() const { return annotationManager; }
 
 private:
     // This may only be called by the View object.
@@ -167,8 +183,7 @@ private:
     // the stylesheet.
     void prepare();
 
-    // Unconditionally performs a render with the current map state.
-    void render();
+    void updateAnnotationTiles(std::vector<Tile::ID>&);
 
     enum class Mode : uint8_t {
         None, // we're not doing any processing
@@ -185,6 +200,7 @@ private:
     std::unique_ptr<uv::worker> workers;
     std::thread thread;
     std::unique_ptr<uv::async> asyncTerminate;
+    std::unique_ptr<uv::async> asyncUpdate;
     std::unique_ptr<uv::async> asyncRender;
 
     bool terminating = false;
@@ -195,17 +211,10 @@ private:
     std::mutex mutexPause;
     std::condition_variable condPause;
 
-    // If cleared, the next time the render thread attempts to render the map, it will *actually*
-    // render the map.
-    std::atomic_flag isClean = ATOMIC_FLAG_INIT;
-
-    // If this flag is cleared, the current back buffer is ready for being swapped with the front
-    // buffer (i.e. it has rendered data).
-    std::atomic_flag isSwapped = ATOMIC_FLAG_INIT;
-
-    // This is cleared once the current front buffer has been presented and the back buffer is
-    // ready for rendering.
-    std::atomic_flag isRendered = ATOMIC_FLAG_INIT;
+    // Used to signal that rendering completed.
+    bool rendered = false;
+    std::condition_variable condRendered;
+    std::mutex mutexRendered;
 
     // Stores whether the map thread has been stopped already.
     std::atomic_bool isStopped;
@@ -225,8 +234,8 @@ private:
     util::ptr<Sprite> sprite;
     const std::unique_ptr<LineAtlas> lineAtlas;
     util::ptr<TexturePool> texturePool;
-
     const std::unique_ptr<Painter> painter;
+    util::ptr<AnnotationManager> annotationManager;
 
     std::string styleURL;
     std::string styleJSON = "";

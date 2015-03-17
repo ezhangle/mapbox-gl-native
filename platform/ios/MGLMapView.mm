@@ -1,6 +1,6 @@
 #import "MGLMapView.h"
 
-#import <mbgl/platform/darwin/log_nslog.hpp>
+#import <mbgl/platform/log.hpp>
 #import <mbgl/platform/gl.hpp>
 
 #import <GLKit/GLKit.h>
@@ -72,6 +72,7 @@ const CGSize MGLAnnotationUpdateViewportOutset = {150, 150};
 @property (nonatomic) UIPinchGestureRecognizer *pinch;
 @property (nonatomic) UIRotationGestureRecognizer *rotate;
 @property (nonatomic) UILongPressGestureRecognizer *quickZoom;
+@property (nonatomic) NSMutableArray *bundledStyleNames;
 @property (nonatomic, readonly) NSDictionary *allowedStyleTypes;
 @property (nonatomic) CGPoint centerPoint;
 @property (nonatomic) CGFloat scale;
@@ -103,10 +104,11 @@ const CGSize MGLAnnotationUpdateViewportOutset = {150, 150};
 @end
 
 @implementation MGLMapView {
-    NSMutableArray *_bundledStyleNames;
     NSMutableArray *_annotationViews;
     UIImage *_pinImage;
 }
+
+@synthesize bundledStyleNames=_bundledStyleNames;
 
 #pragma mark - Setup & Teardown -
 
@@ -192,17 +194,13 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 - (BOOL)commonInit
 {
-    // set logging backend
-    //
-    mbgl::Log::Set<mbgl::NSLogBackend>();
-
     // create context
     //
     _context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
 
     if ( ! _context)
     {
-        mbgl::Log::Error(mbgl::Event::Setup, "Failed to create OpenGL ES context");
+        mbgl::Log::Error(mbgl::Event::Setup, "failed to create OpenGL ES context");
 
         return NO;
     }
@@ -215,7 +213,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     //
     _glView = [[GLKView alloc] initWithFrame:self.bounds context:_context];
     _glView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    _glView.enableSetNeedsDisplay = NO;
+    _glView.enableSetNeedsDisplay = YES;
     _glView.drawableStencilFormat = GLKViewDrawableStencilFormat8;
     _glView.drawableDepthFormat = GLKViewDrawableDepthFormat16;
     if ([UIScreen instancesRespondToSelector:@selector(nativeScale)]) {
@@ -225,6 +223,8 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     [_glView bindDrawable];
     [self addSubview:_glView];
 
+    _glView.contentMode = UIViewContentModeCenter;
+    [self setBackgroundColor:[UIColor clearColor]];
 
     // load extensions
     //
@@ -512,16 +512,18 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     [super updateConstraints];
 }
 
+// This is the delegate of the GLKView object's display call.
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
 {
     mbglView->resize(rect.size.width, rect.size.height, view.contentScaleFactor, view.drawableWidth, view.drawableHeight);
+    mbglMap->renderSync();
 }
 
+// This gets called when the view dimension changes, e.g. because the device is being rotated.
 - (void)layoutSubviews
 {
-    mbglMap->update();
-
     [super layoutSubviews];
+    mbglMap->triggerUpdate();
 }
 
 #pragma mark - Life Cycle -
@@ -974,27 +976,26 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
 - (NSArray *)bundledStyleNames
 {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        if (!_bundledStyleNames) {
-            NSString *stylesPath = [[MGLMapView resourceBundlePath] stringByAppendingString:@"/styles"];
-            
-            _bundledStyleNames = [[[NSFileManager defaultManager] contentsOfDirectoryAtPath:stylesPath error:nil] mutableCopy];
-            
-            // Add hybrids
-            NSString *hybridStylePrefix = @"hybrid-";
-            NSString *satelliteStylePrefix = @"satellite-";
-            NSMutableArray *hybridStyleNames = [NSMutableArray array];
-            for (NSString *styleName in _bundledStyleNames) {
-                if ([styleName hasPrefix:satelliteStylePrefix]) {
-                    [hybridStyleNames addObject:[hybridStylePrefix stringByAppendingString:[styleName substringFromIndex:[satelliteStylePrefix length]]]];
-                }
-            }
-            [_bundledStyleNames addObjectsFromArray:hybridStyleNames];
-        }
-    });
+    if (!_bundledStyleNames) {
+        NSString *stylesPath = [[MGLMapView resourceBundlePath] stringByAppendingString:@"/styles"];
 
-    return _bundledStyleNames;
+        _bundledStyleNames = [NSMutableArray array];
+
+        NSArray *bundledStyleNamesWithExtensions = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:stylesPath error:nil];
+        NSString *hybridStylePrefix = @"hybrid-";
+        NSString *satelliteStylePrefix = @"satellite-";
+        for (NSString *fileName in bundledStyleNamesWithExtensions) {
+            NSString *styleName = [fileName stringByDeletingPathExtension];
+            [_bundledStyleNames addObject:styleName];
+
+            // Add satellite raster & "hybrid" (satellite raster + vector contours & labels)
+            if ([styleName hasPrefix:satelliteStylePrefix]) {
+                [_bundledStyleNames addObject:[hybridStylePrefix stringByAppendingString:[styleName substringFromIndex:[satelliteStylePrefix length]]]];
+            }
+        }
+    }
+
+    return [NSArray arrayWithArray:_bundledStyleNames];
 }
 
 - (void)useBundledStyleNamed:(NSString *)styleName
@@ -1006,7 +1007,7 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     }
     [self setStyleURL:[NSString stringWithFormat:@"styles/%@.json", styleName]];
     if (isHybrid) {
-        [self setAppliedStyleClasses:@[@"contours", @"labels"]];
+        [self setStyleClasses:@[@"contours", @"labels"]];
     }
 }
 
@@ -1065,12 +1066,12 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     return returnArray;
 }
 
-- (void)setAppliedStyleClasses:(NSArray *)appliedClasses
+- (void)setStyleClasses:(NSArray *)appliedClasses
 {
-    [self setAppliedStyleClasses:appliedClasses transitionDuration:0];
+    [self setStyleClasses:appliedClasses transitionDuration:0];
 }
 
-- (void)setAppliedStyleClasses:(NSArray *)appliedClasses transitionDuration:(NSTimeInterval)transitionDuration
+- (void)setStyleClasses:(NSArray *)appliedClasses transitionDuration:(NSTimeInterval)transitionDuration
 {
     std::vector<std::string> newAppliedClasses;
 
@@ -1756,14 +1757,10 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     return resourceBundlePath;
 }
 
-- (void)swap
+- (void)invalidate
 {
-    if (mbglMap->needsSwap())
-    {
-        [self.glView display];
-        mbglMap->swapped();
-        [self notifyMapChange:@(mbgl::MapChangeRegionIsChanging)];
-    }
+    // This is run in the main/UI thread.
+    [self.glView setNeedsDisplay];
 }
 
 class MBGLView : public mbgl::View
@@ -1773,12 +1770,12 @@ class MBGLView : public mbgl::View
         virtual ~MBGLView() {}
 
 
-    void notify()
+    void notify() override
     {
         // no-op
     }
 
-    void notifyMapChange(mbgl::MapChange change, std::chrono::steady_clock::duration delay = std::chrono::steady_clock::duration::zero())
+    void notifyMapChange(mbgl::MapChange change, std::chrono::steady_clock::duration delay = std::chrono::steady_clock::duration::zero()) override
     {
         if (delay != std::chrono::steady_clock::duration::zero())
         {
@@ -1795,12 +1792,12 @@ class MBGLView : public mbgl::View
         }
     }
 
-    void activate()
+    void activate() override
     {
         [EAGLContext setCurrentContext:nativeView.context];
     }
 
-    void deactivate()
+    void deactivate() override
     {
         [EAGLContext setCurrentContext:nil];
     }
@@ -1809,9 +1806,9 @@ class MBGLView : public mbgl::View
         View::resize(width, height, ratio, fbWidth, fbHeight);
     }
 
-    void swap()
+    void invalidate() override
     {
-        [nativeView performSelectorOnMainThread:@selector(swap)
+        [nativeView performSelectorOnMainThread:@selector(invalidate)
                                      withObject:nil
                                   waitUntilDone:NO];
     }

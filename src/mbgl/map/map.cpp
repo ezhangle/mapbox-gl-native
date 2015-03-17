@@ -4,6 +4,7 @@
 #include <mbgl/platform/platform.hpp>
 #include <mbgl/map/source.hpp>
 #include <mbgl/renderer/painter.hpp>
+#include <mbgl/map/annotation.hpp>
 #include <mbgl/map/sprite.hpp>
 #include <mbgl/util/transition.hpp>
 #include <mbgl/util/math.hpp>
@@ -70,13 +71,10 @@ Map::Map(View& view_, FileSource& fileSource_)
       spriteAtlas(util::make_unique<SpriteAtlas>(512, 512)),
       lineAtlas(util::make_unique<LineAtlas>(512, 512)),
       texturePool(std::make_shared<TexturePool>()),
-      painter(util::make_unique<Painter>(*spriteAtlas, *glyphAtlas, *lineAtlas))
+      painter(util::make_unique<Painter>(*spriteAtlas, *glyphAtlas, *lineAtlas)),
+      annotationManager(util::make_unique<AnnotationManager>(*this))
 {
     view.initialize(this);
-    // Make sure that we're doing an initial drawing in all cases.
-    isClean.clear();
-    isRendered.clear();
-    isSwapped.test_and_set();
 }
 
 Map::~Map() {
@@ -124,26 +122,30 @@ void Map::start(bool startPaused) {
 
         // Closes all open handles on the loop. This means that the loop will automatically terminate.
         asyncRender.reset();
+        asyncUpdate.reset();
         asyncTerminate.reset();
     });
 
-    asyncRender = util::make_unique<uv::async>(env->loop, [this]() {
+    asyncUpdate = util::make_unique<uv::async>(env->loop, [this] {
         assert(std::this_thread::get_id() == mapThread);
 
         if (state.hasSize()) {
-            if (isRendered.test_and_set() == false) {
-                prepare();
-                if (isClean.test_and_set() == false) {
-                    render();
-                    isSwapped.clear();
-                    view.swap();
-                } else {
-                    // We set the rendered flag in the test above, so we have to reset it
-                    // now that we're not actually rendering because the map is clean.
-                    isRendered.clear();
-                }
-            }
+            prepare();
         }
+    });
+
+    asyncRender = util::make_unique<uv::async>(env->loop, [this] {
+        // Must be called in Map thread.
+        assert(std::this_thread::get_id() == mapThread);
+
+        render();
+
+        // Finally, notify all listeners that we have finished rendering this frame.
+        {
+            std::lock_guard<std::mutex> lk(mutexRendered);
+            rendered = true;
+        }
+        condRendered.notify_all();
     });
 
     // Do we need to pause first?
@@ -208,7 +210,7 @@ void Map::pause(bool waitForPause) {
     mutexRun.unlock();
 
     uv_stop(env->loop);
-    rerender(); // Needed to ensure uv_stop is seen and uv_run exits, otherwise we deadlock on wait_for_pause
+    triggerUpdate(); // Needed to ensure uv_stop is seen and uv_run exits, otherwise we deadlock on wait_for_pause
 
     if (waitForPause) {
         std::unique_lock<std::mutex> lockPause (mutexPause);
@@ -280,6 +282,30 @@ void Map::run() {
     view.deactivate();
 }
 
+void Map::renderSync() {
+    // Must be called in UI thread.
+    assert(std::this_thread::get_id() == mainThread);
+
+    triggerRender();
+
+    std::unique_lock<std::mutex> lock(mutexRendered);
+    condRendered.wait(lock, [this] { return rendered; });
+    rendered = false;
+}
+
+void Map::triggerUpdate() {
+    if (mode == Mode::Static) {
+        prepare();
+    } else if (asyncUpdate) {
+        asyncUpdate->send();
+    }
+}
+
+void Map::triggerRender() {
+    assert(asyncRender);
+    asyncRender->send();
+}
+
 void Map::checkForPause() {
     std::unique_lock<std::mutex> lockRun (mutexRun);
     while (pausing) {
@@ -298,32 +324,6 @@ void Map::checkForPause() {
     mutexPause.lock();
     isPaused = false;
     mutexPause.unlock();
-}
-
-void Map::rerender() {
-    if (mode == Mode::Static) {
-        prepare();
-    } else if (mode == Mode::Continuous) {
-        // We only send render events if we want to continuously update the map
-        // (== async rendering).
-        if (asyncRender) {
-            asyncRender->send();
-        }
-    }
-}
-
-void Map::update() {
-    isClean.clear();
-    rerender();
-}
-
-bool Map::needsSwap() {
-    return isSwapped.test_and_set() == false;
-}
-
-void Map::swapped() {
-    isRendered.clear();
-    rerender();
 }
 
 void Map::terminate() {
@@ -350,7 +350,6 @@ void Map::setStyleURL(const std::string &url) {
     }
 }
 
-
 void Map::setStyleJSON(std::string newStyleJSON, const std::string &base) {
     // TODO: Make threadsafe.
     styleJSON.swap(newStyleJSON);
@@ -367,7 +366,7 @@ void Map::setStyleJSON(std::string newStyleJSON, const std::string &base) {
     const std::string glyphURL = util::mapbox::normalizeGlyphsURL(style->glyph_url, getAccessToken());
     glyphStore->setURL(glyphURL);
 
-    update();
+    triggerUpdate();
 }
 
 std::string Map::getStyleJSON() const {
@@ -377,7 +376,7 @@ std::string Map::getStyleJSON() const {
 util::ptr<Sprite> Map::getSprite() {
     const float pixelRatio = state.getPixelRatio();
     const std::string &sprite_url = style->getSpriteURL();
-    if (!sprite || sprite->pixelRatio != pixelRatio) {
+    if (!sprite || !sprite->hasPixelRatio(pixelRatio)) {
         sprite = Sprite::Create(sprite_url, pixelRatio, *env);
     }
 
@@ -393,7 +392,7 @@ void Map::resize(uint16_t width, uint16_t height, float ratio) {
 
 void Map::resize(uint16_t width, uint16_t height, float ratio, uint16_t fbWidth, uint16_t fbHeight) {
     if (transform.resize(width, height, ratio, fbWidth, fbHeight)) {
-        update();
+        triggerUpdate();
     }
 }
 
@@ -402,7 +401,7 @@ void Map::resize(uint16_t width, uint16_t height, float ratio, uint16_t fbWidth,
 void Map::cancelTransitions() {
     transform.cancelTransitions();
 
-    update();
+    triggerUpdate();
 }
 
 
@@ -410,12 +409,12 @@ void Map::cancelTransitions() {
 
 void Map::moveBy(double dx, double dy, std::chrono::steady_clock::duration duration) {
     transform.moveBy(dx, dy, duration);
-    update();
+    triggerUpdate();
 }
 
 void Map::setLatLng(LatLng latLng, std::chrono::steady_clock::duration duration) {
     transform.setLatLng(latLng, duration);
-    update();
+    triggerUpdate();
 }
 
 LatLng Map::getLatLng() const {
@@ -424,19 +423,19 @@ LatLng Map::getLatLng() const {
 
 void Map::startPanning() {
     transform.startPanning();
-    update();
+    triggerUpdate();
 }
 
 void Map::stopPanning() {
     transform.stopPanning();
-    update();
+    triggerUpdate();
 }
 
 void Map::resetPosition() {
     transform.setAngle(0);
     transform.setLatLng(LatLng(0, 0));
     transform.setZoom(0);
-    update();
+    triggerUpdate();
 }
 
 
@@ -444,12 +443,12 @@ void Map::resetPosition() {
 
 void Map::scaleBy(double ds, double cx, double cy, std::chrono::steady_clock::duration duration) {
     transform.scaleBy(ds, cx, cy, duration);
-    update();
+    triggerUpdate();
 }
 
 void Map::setScale(double scale, double cx, double cy, std::chrono::steady_clock::duration duration) {
     transform.setScale(scale, cx, cy, duration);
-    update();
+    triggerUpdate();
 }
 
 double Map::getScale() const {
@@ -458,7 +457,7 @@ double Map::getScale() const {
 
 void Map::setZoom(double zoom, std::chrono::steady_clock::duration duration) {
     transform.setZoom(zoom, duration);
-    update();
+    triggerUpdate();
 }
 
 double Map::getZoom() const {
@@ -467,7 +466,7 @@ double Map::getZoom() const {
 
 void Map::setLatLngZoom(LatLng latLng, double zoom, std::chrono::steady_clock::duration duration) {
     transform.setLatLngZoom(latLng, zoom, duration);
-    update();
+    triggerUpdate();
 }
 
 void Map::resetZoom() {
@@ -476,12 +475,12 @@ void Map::resetZoom() {
 
 void Map::startScaling() {
     transform.startScaling();
-    update();
+    triggerUpdate();
 }
 
 void Map::stopScaling() {
     transform.stopScaling();
-    update();
+    triggerUpdate();
 }
 
 double Map::getMinZoom() const {
@@ -496,17 +495,17 @@ double Map::getMaxZoom() const {
 
 void Map::rotateBy(double sx, double sy, double ex, double ey, std::chrono::steady_clock::duration duration) {
     transform.rotateBy(sx, sy, ex, ey, duration);
-    update();
+    triggerUpdate();
 }
 
 void Map::setBearing(double degrees, std::chrono::steady_clock::duration duration) {
     transform.setAngle(-degrees * M_PI / 180, duration);
-    update();
+    triggerUpdate();
 }
 
 void Map::setBearing(double degrees, double cx, double cy) {
     transform.setAngle(-degrees * M_PI / 180, cx, cy);
-    update();
+    triggerUpdate();
 }
 
 double Map::getBearing() const {
@@ -515,17 +514,17 @@ double Map::getBearing() const {
 
 void Map::resetNorth() {
     transform.setAngle(0, std::chrono::milliseconds(500));
-    update();
+    triggerUpdate();
 }
 
 void Map::startRotating() {
     transform.startRotating();
-    update();
+    triggerUpdate();
 }
 
 void Map::stopRotating() {
     transform.stopRotating();
-    update();
+    triggerUpdate();
 }
 
 #pragma mark - Access Token
@@ -538,13 +537,64 @@ const std::string &Map::getAccessToken() const {
     return accessToken;
 }
 
+#pragma mark - Annotations
+
+void Map::setDefaultPointAnnotationSymbol(std::string& symbol) {
+    assert(std::this_thread::get_id() == mainThread);
+    annotationManager->setDefaultPointAnnotationSymbol(symbol);
+}
+
+uint32_t Map::addPointAnnotation(LatLng point, std::string& symbol) {
+    assert(std::this_thread::get_id() == mainThread);
+    std::vector<LatLng> points({ point });
+    std::vector<std::string> symbols({ symbol });
+    return addPointAnnotations(points, symbols)[0];
+}
+
+std::vector<uint32_t> Map::addPointAnnotations(std::vector<LatLng> points, std::vector<std::string>& symbols) {
+    assert(std::this_thread::get_id() == mainThread);
+    auto result = annotationManager->addPointAnnotations(points, symbols);
+    updateAnnotationTiles(result.first);
+    return result.second;
+}
+
+void Map::removeAnnotation(uint32_t annotation) {
+    assert(std::this_thread::get_id() == mainThread);
+    removeAnnotations({ annotation });
+}
+
+void Map::removeAnnotations(std::vector<uint32_t> annotations) {
+    assert(std::this_thread::get_id() == mainThread);
+    auto result = annotationManager->removeAnnotations(annotations);
+    updateAnnotationTiles(result);
+}
+
+std::vector<uint32_t> Map::getAnnotationsInBoundingBox(BoundingBox bbox) const {
+    assert(std::this_thread::get_id() == mainThread);
+    return annotationManager->getAnnotationsInBoundingBox(bbox);
+}
+
+BoundingBox Map::getBoundingBoxForAnnotations(std::vector<uint32_t> annotations) const {
+    assert(std::this_thread::get_id() == mainThread);
+    return annotationManager->getBoundingBoxForAnnotations(annotations);
+}
+
+void Map::updateAnnotationTiles(std::vector<Tile::ID>& ids) {
+    for (const auto &source : activeSources) {
+        if (source->info.type == SourceType::Annotations) {
+            source->source->invalidateTiles(*this, ids);
+            return;
+        }
+    }
+}
+
 #pragma mark - Toggles
 
 void Map::setDebug(bool value) {
     debug = value;
     assert(painter);
     painter->setDebug(debug);
-    update();
+    triggerUpdate();
 }
 
 void Map::toggleDebug() {
@@ -561,7 +611,7 @@ void Map::addClass(const std::string& klass) {
     if (style) {
         style->cascadeClasses(classes);
         if (style->hasTransitions()) {
-            update();
+            triggerUpdate();
         }
     }
 }
@@ -572,7 +622,7 @@ void Map::removeClass(const std::string& klass) {
     if (style) {
         style->cascadeClasses(classes);
         if (style->hasTransitions()) {
-            update();
+            triggerUpdate();
         }
     }
 }
@@ -582,7 +632,7 @@ void Map::setClasses(const std::vector<std::string>& classes_) {
     if (style) {
         style->cascadeClasses(classes);
         if (style->hasTransitions()) {
-            update();
+            triggerUpdate();
         }
     }
 }
@@ -636,6 +686,7 @@ void Map::updateSources() {
 }
 
 void Map::updateSources(const util::ptr<StyleLayerGroup> &group) {
+    assert(std::this_thread::get_id() == mapThread);
     if (!group) {
         return;
     }
@@ -644,17 +695,24 @@ void Map::updateSources(const util::ptr<StyleLayerGroup> &group) {
         if (layer->bucket && layer->bucket->style_source) {
             (*activeSources.emplace(layer->bucket->style_source).first)->enabled = true;
         }
+
     }
 }
 
 void Map::updateTiles() {
-    for (const auto& source : activeSources) {
+    assert(std::this_thread::get_id() == mapThread);
+    for (const auto &source : activeSources) {
         source->source->update(*this, *env, getWorker(), style, *glyphAtlas, *glyphStore,
-                               *spriteAtlas, getSprite(), *texturePool, [this]() { update(); });
+                               *spriteAtlas, getSprite(), *texturePool, [this]() {
+            assert(std::this_thread::get_id() == mapThread);
+            triggerUpdate();
+        });
     }
 }
 
 void Map::prepare() {
+    assert(std::this_thread::get_id() == mapThread);
+
     if (!style) {
         style = std::make_shared<Style>();
 
@@ -691,14 +749,19 @@ void Map::prepare() {
     spriteAtlas->setSprite(getSprite());
 
     updateTiles();
+
+    if (mode == Mode::Continuous) {
+        view.invalidate();
+    }
 }
 
 void Map::render() {
+    assert(std::this_thread::get_id() == mapThread);
     assert(painter);
     painter->render(*style, activeSources,
                     state, animationTime);
     // Schedule another rerender when we definitely need a next frame.
     if (transform.needsTransition() || style->hasTransitions()) {
-        update();
+        triggerUpdate();
     }
 }

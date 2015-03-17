@@ -32,7 +32,7 @@ util::ptr<Sprite> Sprite::Create(const std::string &base_url, float pixelRatio, 
 
 Sprite::Sprite(const Key &, const std::string& base_url, float pixelRatio_)
     : valid(base_url.length() > 0),
-      pixelRatio(pixelRatio_),
+      pixelRatio(pixelRatio_ > 1 ? 2 : 1),
       spriteURL(base_url + (pixelRatio_ > 1 ? "@2x" : "") + ".png"),
       jsonURL(base_url + (pixelRatio_ > 1 ? "@2x" : "") + ".json"),
       raster(),
@@ -40,6 +40,11 @@ Sprite::Sprite(const Key &, const std::string& base_url, float pixelRatio_)
       loadedJSON(false),
       future(promise.get_future()) {
 }
+
+bool Sprite::hasPixelRatio(float ratio) const {
+    return pixelRatio == (ratio > 1 ? 2 : 1);
+}
+
 
 void Sprite::waitUntilLoaded() const {
     future.wait();
@@ -54,7 +59,6 @@ Sprite::operator bool() const {
 // The reason this isn't part of the constructor is that calling shared_from_this() in
 // the constructor fails.
 void Sprite::load(Environment &env) {
-
     if (!valid) {
         // Treat a non-existent sprite as a successfully loaded empty sprite.
         loadedImage = true;
@@ -69,22 +73,22 @@ void Sprite::load(Environment &env) {
         if (res.status == Response::Successful) {
             sprite->body = res.data;
             sprite->parseJSON();
-            sprite->complete();
         } else {
             Log::Warning(Event::Sprite, "Failed to load sprite info: %s", res.message.c_str());
-            sprite->promise.set_exception(std::make_exception_ptr(std::runtime_error(res.message)));
         }
+        sprite->loadedJSON = true;
+        sprite->complete();
     });
 
     env.request({ Resource::Kind::Image, spriteURL }, [sprite](const Response &res) {
         if (res.status == Response::Successful) {
             sprite->image = res.data;
             sprite->parseImage();
-            sprite->complete();
         } else {
             Log::Warning(Event::Sprite, "Failed to load sprite image: %s", res.message.c_str());
-            sprite->promise.set_exception(std::make_exception_ptr(std::runtime_error(res.message)));
         }
+        sprite->loadedImage = true;
+        sprite->complete();
     });
 }
 
@@ -104,7 +108,6 @@ void Sprite::parseImage() {
         raster.reset();
     }
     image.clear();
-    loadedImage = true;
 }
 
 void Sprite::parseJSON() {
@@ -139,8 +142,6 @@ void Sprite::parseJSON() {
     } else {
         Log::Warning(Event::Sprite, "sprite JSON root is not an object");
     }
-
-    loadedJSON = true;
 }
 
 const SpritePosition &Sprite::getSpritePosition(const std::string& name) const {

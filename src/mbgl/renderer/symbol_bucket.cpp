@@ -1,10 +1,10 @@
-#include <mbgl/style/style_layout.hpp>
 #include <mbgl/renderer/symbol_bucket.hpp>
+#include <mbgl/map/geometry_tile.hpp>
+#include <mbgl/style/style_layout.hpp>
 #include <mbgl/geometry/text_buffer.hpp>
 #include <mbgl/geometry/icon_buffer.hpp>
 #include <mbgl/geometry/glyph_atlas.hpp>
 #include <mbgl/geometry/sprite_atlas.hpp>
-#include <mbgl/geometry/geometry.hpp>
 #include <mbgl/geometry/anchor.hpp>
 #include <mbgl/geometry/resample.hpp>
 #include <mbgl/renderer/painter.hpp>
@@ -18,6 +18,7 @@
 #include <mbgl/util/token.hpp>
 #include <mbgl/util/math.hpp>
 #include <mbgl/util/merge_lines.hpp>
+#include <mbgl/util/std.hpp>
 
 namespace mbgl {
 
@@ -41,14 +42,8 @@ bool SymbolBucket::hasTextData() const { return !text.groups.empty(); }
 
 bool SymbolBucket::hasIconData() const { return !icon.groups.empty(); }
 
-void SymbolBucket::addGlyphsToAtlas(uint64_t tileid, const std::string stackname,
-                                    const std::u32string &text, const FontStack &fontStack,
-                                    GlyphAtlas &glyphAtlas, GlyphPositions &face) {
-    glyphAtlas.addGlyphs(tileid, text, stackname, fontStack,face);
-}
-
-std::vector<SymbolFeature> SymbolBucket::processFeatures(const VectorTileLayer &layer,
-                                                         const FilterExpression &filter,
+std::vector<SymbolFeature> SymbolBucket::processFeatures(const GeometryTileLayer& layer,
+                                                         const FilterExpression& filter,
                                                          GlyphStore &glyphStore,
                                                          const Sprite &sprite) {
     auto &layout = *styleLayout;
@@ -64,14 +59,22 @@ std::vector<SymbolFeature> SymbolBucket::processFeatures(const VectorTileLayer &
     // Determine and load glyph ranges
     std::set<GlyphRange> ranges;
 
-    FilteredVectorTileLayer filtered_layer(layer, filter);
-    for (const pbf &feature_pbf : filtered_layer) {
-        const VectorTileFeature feature{feature_pbf, layer};
+    for (std::size_t i = 0; i < layer.featureCount(); i++) {
+        auto feature = layer.feature(i);
+
+        GeometryTileFeatureExtractor extractor(*feature);
+        if (!evaluate(filter, extractor))
+            continue;
 
         SymbolFeature ft;
 
+        auto getValue = [&feature](const std::string& key) -> std::string {
+            auto value = feature->getValue(key);
+            return value ? toString(*value) : std::string();
+        };
+
         if (has_text) {
-            std::string u8string = util::replaceTokens(layout.text.field, feature.properties);
+            std::string u8string = util::replaceTokens(layout.text.field, getValue);
 
             if (layout.text.transform == TextTransformType::Uppercase) {
                 u8string = platform::uppercase(u8string);
@@ -90,25 +93,19 @@ std::vector<SymbolFeature> SymbolBucket::processFeatures(const VectorTileLayer &
         }
 
         if (has_icon) {
-            ft.sprite = util::replaceTokens(layout.icon.image, feature.properties);
+            ft.sprite = util::replaceTokens(layout.icon.image, getValue);
         }
 
         if (ft.label.length() || ft.sprite.length()) {
 
             auto &multiline = ft.geometry;
 
-            // Decode line
-            Geometry::command cmd;
-            pbf geom(feature.geometry);
-            Geometry geometry(geom);
-            bool first = true;
-            int32_t x, y;
-            while ((cmd = geometry.next(x, y)) != Geometry::end) {
-                if (first || cmd == Geometry::move_to) {
-                    multiline.emplace_back();
-                    first = false;
+            GeometryCollection geometryCollection = feature->getGeometries();
+            for (auto& line : geometryCollection) {
+                multiline.emplace_back();
+                for (auto& point : line) {
+                    multiline.back().emplace_back(point.x, point.y);
                 }
-                multiline.back().emplace_back(x, y);
             }
 
             features.push_back(std::move(ft));
@@ -125,9 +122,13 @@ std::vector<SymbolFeature> SymbolBucket::processFeatures(const VectorTileLayer &
     return features;
 }
 
-void SymbolBucket::addFeatures(const VectorTileLayer &layer, const FilterExpression &filter,
-                               const Tile::ID &id, SpriteAtlas &spriteAtlas, Sprite &sprite,
-                               GlyphAtlas & glyphAtlas, GlyphStore &glyphStore) {
+void SymbolBucket::addFeatures(const GeometryTileLayer& layer,
+                               const FilterExpression& filter,
+                               uintptr_t tileUID,
+                               SpriteAtlas& spriteAtlas,
+                               Sprite& sprite,
+                               GlyphAtlas& glyphAtlas,
+                               GlyphStore& glyphStore) {
     auto &layout = *styleLayout;
     const std::vector<SymbolFeature> features = processFeatures(layer, filter, glyphStore, sprite);
 
@@ -195,8 +196,7 @@ void SymbolBucket::addFeatures(const VectorTileLayer &layer, const FilterExpress
 
             // Add the glyphs we need for this label to the glyph atlas.
             if (shaping.size()) {
-                SymbolBucket::addGlyphsToAtlas(id.to_uint64(), layout.text.font, feature.label, fontStack,
-                                               glyphAtlas, face);
+                glyphAtlas.addGlyphs(tileUID, feature.label, layout.text.font, fontStack, face);
             }
         }
 

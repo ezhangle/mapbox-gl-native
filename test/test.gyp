@@ -32,12 +32,13 @@
         'fixtures/main.cpp',
         'fixtures/util.hpp',
         'fixtures/util.cpp',
-        'fixtures/fixture_log.hpp',
-        'fixtures/fixture_log.cpp',
+        'fixtures/fixture_log_observer.hpp',
+        'fixtures/fixture_log_observer.cpp',
 
         'headless/headless.cpp',
 
         'miscellaneous/clip_ids.cpp',
+        'miscellaneous/bilinear.cpp',
         'miscellaneous/comparisons.cpp',
         'miscellaneous/enums.cpp',
         'miscellaneous/functions.cpp',
@@ -67,22 +68,15 @@
       ],
       'libraries': [
         '<@(uv_static_libs)',
-        '<@(glfw3_static_libs)',
-        '<@(sqlite3_static_libs)',
-        '<@(zlib_static_libs)',
-        '<@(curl_static_libs)',
       ],
       'variables': {
         'cflags_cc': [
           '<@(uv_cflags)',
+          '<@(opengl_cflags)',
           '<@(boost_cflags)',
         ],
         'ldflags': [
           '<@(uv_ldflags)',
-          '<@(glfw3_ldflags)',
-          '<@(sqlite3_ldflags)',
-          '<@(zlib_ldflags)',
-          '<@(curl_ldflags)',
         ],
       },
       'conditions': [

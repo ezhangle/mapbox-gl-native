@@ -1,16 +1,12 @@
 #include <mbgl/renderer/fill_bucket.hpp>
 #include <mbgl/geometry/fill_buffer.hpp>
 #include <mbgl/geometry/elements_buffer.hpp>
-#include <mbgl/geometry/geometry.hpp>
-
 #include <mbgl/renderer/painter.hpp>
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/style_layout.hpp>
-#include <mbgl/map/vector_tile.hpp>
 #include <mbgl/util/std.hpp>
-
 #include <mbgl/platform/gl.hpp>
-
+#include <mbgl/platform/log.hpp>
 
 #include <cassert>
 
@@ -69,27 +65,16 @@ FillBucket::~FillBucket() {
     }
 }
 
-void FillBucket::addGeometry(pbf& geom) {
-    Geometry::command cmd;
-
-    Coordinate coord;
-    Geometry geometry(geom);
-    int32_t x, y;
-    while ((cmd = geometry.next(x, y)) != Geometry::end) {
-        if (cmd == Geometry::move_to) {
-            if (line.size()) {
-                clipper.AddPath(line, ClipperLib::ptSubject, true);
-                line.clear();
-                hasVertices = true;
-            }
+void FillBucket::addGeometry(const GeometryCollection& geometryCollection) {
+    for (auto& line_ : geometryCollection) {
+        for (auto& v : line_) {
+            line.emplace_back(v.x, v.y);
         }
-        line.emplace_back(x, y);
-    }
-
-    if (line.size()) {
-        clipper.AddPath(line, ClipperLib::ptSubject, true);
-        line.clear();
-        hasVertices = true;
+        if (line.size()) {
+            clipper.AddPath(line, ClipperLib::ptSubject, true);
+            line.clear();
+            hasVertices = true;
+        }
     }
 
     tessellate();
@@ -189,12 +174,12 @@ void FillBucket::tessellate() {
                 } else {
 #if defined(DEBUG)
                     // TODO: We're missing a vertex that was not part of the line.
-                    fprintf(stderr, "undefined element buffer\n");
+                    Log::Error(Event::OpenGL, "undefined element buffer");
 #endif
                 }
             } else {
 #if defined(DEBUG)
-                fprintf(stderr, "undefined element buffer\n");
+                Log::Error(Event::OpenGL, "undefined element buffer");
 #endif
             }
         }
@@ -203,7 +188,7 @@ void FillBucket::tessellate() {
         triangleGroup.elements_length += triangle_count;
     } else {
 #if defined(DEBUG)
-        fprintf(stderr, "tessellation failed\n");
+        Log::Error(Event::OpenGL, "tessellation failed");
 #endif
     }
 
