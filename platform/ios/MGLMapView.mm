@@ -717,7 +717,14 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
             {
                 if (self.selectedAnnotationID.integerValue != -1)
                 {
-                    self.selectedAnnotationID = self.currentNearbyAnnotations[[self.currentNearbyAnnotations indexOfObject:self.selectedAnnotationID] + 1];
+                    if (self.currentNearbyAnnotations.count > 1)
+                    {
+                        self.selectedAnnotationID = self.currentNearbyAnnotations[[self.currentNearbyAnnotations indexOfObject:self.selectedAnnotationID] + 1];
+                    }
+                    else
+                    {
+                        self.selectedAnnotationID = @(-1);
+                    }
                 }
                 else
                 {
