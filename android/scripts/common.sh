@@ -38,3 +38,8 @@ elif [ ${BUILDTYPE} == "Release" ] ; then
         ${APK_OUTPUTS}/MapboxGLAndroidSDKTestApp-release-unsigned.apk \
         ${S3_PREFIX}/MapboxGLAndroidSDKTestApp-release-unsigned.apk
 fi
+
+# Start the Testmunk testrun
+if [ ${TESTMUNK} == "yes" ] ; then
+    ./android/scripts/upload-testmunk.sh ${APK_OUTPUTS}/MapboxGLAndroidSDKTestApp-release-unsigned.apk
+fi
