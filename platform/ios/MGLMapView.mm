@@ -67,6 +67,8 @@ NSTimeInterval const MGLAnimationDuration = 0.3;
 @property (nonatomic) UIRotationGestureRecognizer *rotate;
 @property (nonatomic) UILongPressGestureRecognizer *quickZoom;
 @property (nonatomic) NSMutableArray *bundledStyleNames;
+@property (nonatomic) NSMutableArray *currentNearbyAnnotations;
+@property (nonatomic) NSNumber *selectedAnnotationID;
 @property (nonatomic, readonly) NSDictionary *allowedStyleTypes;
 @property (nonatomic) CGPoint centerPoint;
 @property (nonatomic) CGFloat scale;
@@ -302,6 +304,9 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
     [self addGestureRecognizer:_rotate];
     _rotateEnabled = YES;
 
+    UITapGestureRecognizer *singleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleSingleTapGesture:)];
+    [self addGestureRecognizer:singleTap];
+
     UITapGestureRecognizer *doubleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleDoubleTapGesture:)];
     doubleTap.numberOfTapsRequired = 2;
     [self addGestureRecognizer:doubleTap];
@@ -319,6 +324,10 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
         _quickZoom.minimumPressDuration = 0.25;
         [self addGestureRecognizer:_quickZoom];
     }
+
+    // setup nearby annotations for taps
+    //
+    _currentNearbyAnnotations = [NSMutableArray array];
 
     // observe app activity
     //
@@ -669,6 +678,57 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
 
         [self notifyMapChange:@(mbgl::MapChangeRegionDidChangeAnimated)];
     }
+}
+
+- (void)handleSingleTapGesture:(UITapGestureRecognizer *)singleTap
+{
+    CGPoint tapPoint = [singleTap locationInView:self];
+
+    CGFloat touchSize = 44;
+    CGRect tapRect = CGRectMake(tapPoint.x - touchSize / 2, tapPoint.y - touchSize / 2, touchSize, touchSize);
+    CGPoint tapRectLowerLeft = CGPointMake(tapRect.origin.x, tapRect.origin.y + tapRect.size.height);
+    CGPoint tapRectUpperRight = CGPointMake(tapRect.origin.x + tapRect.size.width, tapRect.origin.y);
+    CLLocationCoordinate2D tapRectSW = [self convertPoint:tapRectLowerLeft toCoordinateFromView:self];
+    CLLocationCoordinate2D tapRectNE = [self convertPoint:tapRectUpperRight toCoordinateFromView:self];
+
+    mbgl::LatLngBounds tapBounds = mbgl::LatLngBounds(mbgl::LatLng(tapRectSW.latitude, tapRectSW.longitude),
+                                                      mbgl::LatLng(tapRectNE.latitude, tapRectNE.longitude));
+
+    std::vector<uint32_t> nearbyAnnotations = mbglMap->getAnnotationsInBounds(tapBounds);
+
+    if (nearbyAnnotations.size())
+    {
+        NSMutableArray *compareAnnotations = [NSMutableArray array];
+
+        for (NSUInteger i = 0; i < nearbyAnnotations.size(); i++)
+        {
+            [compareAnnotations addObject:@(nearbyAnnotations[i])];
+            [compareAnnotations sortUsingSelector:@selector(compare:)];
+        }
+
+        if ([self.currentNearbyAnnotations isEqualToArray:compareAnnotations])
+        {
+            if ([self.selectedAnnotationID isEqualToValue:self.currentNearbyAnnotations.lastObject])
+            {
+                self.selectedAnnotationID = self.currentNearbyAnnotations.firstObject;
+            }
+            else
+            {
+                self.selectedAnnotationID = self.currentNearbyAnnotations[[self.currentNearbyAnnotations indexOfObject:self.selectedAnnotationID] + 1];
+            }
+        }
+        else
+        {
+            [self.currentNearbyAnnotations setArray:compareAnnotations];
+            self.selectedAnnotationID = self.currentNearbyAnnotations.firstObject;
+        }
+    }
+    else
+    {
+        self.selectedAnnotationID = @(-1);
+    }
+
+    NSLog(@"selected: %@", self.selectedAnnotationID);
 }
 
 - (void)handleDoubleTapGesture:(UITapGestureRecognizer *)doubleTap
