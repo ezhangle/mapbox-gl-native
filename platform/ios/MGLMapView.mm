@@ -715,7 +715,14 @@ mbgl::DefaultFileSource *mbglFileSource = nullptr;
             }
             else
             {
-                self.selectedAnnotationID = self.currentNearbyAnnotations[[self.currentNearbyAnnotations indexOfObject:self.selectedAnnotationID] + 1];
+                if (self.selectedAnnotationID.integerValue != -1)
+                {
+                    self.selectedAnnotationID = self.currentNearbyAnnotations[[self.currentNearbyAnnotations indexOfObject:self.selectedAnnotationID] + 1];
+                }
+                else
+                {
+                    self.selectedAnnotationID = self.currentNearbyAnnotations.firstObject;
+                }
             }
         }
         else
